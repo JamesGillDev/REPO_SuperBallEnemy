@@ -1,10 +1,8 @@
 # REPO Super Ball Enemy
 
-A BepInEx/REPOLib mod that adds a test-spawnable **Super Ball** enemy to R.E.P.O.
+Experimental BepInEx/REPOLib mod for R.E.P.O. that adds a test-spawnable green glowing chrome sphere enemy.
 
-Current version: `v0.1.0`
-
-Current status: experimental first pass
+> Status: Prototype / v0.1.0
 
 ## Features
 
