@@ -1,0 +1,40 @@
+# Build output
+bin/
+obj/
+Obj/
+Build/
+Builds/
+
+# IDE/editor files
+.vs/
+*.user
+*.suo
+*.csproj.user
+.vscode/.ropeproject
+.vscode/settings.json
+
+# Compiled artifacts and logs
+*.dll
+*.pdb
+*.mdb
+*.log
+
+# R.E.P.O. / Unity / BepInEx game install content
+BepInEx/
+REPO_Data/
+REPO.exe
+UnityPlayer.dll
+Assembly-CSharp.dll
+UnityEngine*.dll
+BepInEx.dll
+REPOLib.dll
+
+# Unity generated folders
+Library/
+Temp/
+Logs/
+UserSettings/
+
+# OS noise
+Thumbs.db
+Desktop.ini
