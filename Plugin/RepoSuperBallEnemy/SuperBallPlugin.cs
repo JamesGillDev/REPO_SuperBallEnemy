@@ -18,13 +18,21 @@ namespace RepoSuperBallEnemy
     {
         public const string PluginGuid = "James.RepoSuperBallEnemy";
         public const string PluginName = "REPO Super Ball Enemy";
-        public const string PluginVersion = "0.2.0";
+        public const string PluginVersion = "0.2.1";
 
         private const string EnemySetupName = "SuperBallEnemySetup";
         private const string EnemyPrefabName = "SuperBallEnemy";
         private const string EnemyDisplayName = "Super Ball";
         private const string SphereVisualName = "SuperBallChromeSphere";
         private const string AuraVisualName = "SuperBallAuraSphere";
+        private const string ConceptRootName = "SuperBallConceptVisuals";
+        private const string InnerCoreVisualName = "SuperBallInnerCore";
+        private const string CrackShellVisualName = "SuperBallCrackShell";
+        private const string FaceRootName = "SuperBallHellFace";
+        private const string LeftEyeVisualName = "SuperBallLeftEye";
+        private const string RightEyeVisualName = "SuperBallRightEye";
+        private const string GrinVisualName = "SuperBallGrin";
+        private const string HighlightVisualName = "SuperBallChromeHighlight";
         private const string SpawnDebugSphereName = "SuperBallF8VisibilitySphere";
         private const string StandaloneDebugSphereName = "SuperBallStandaloneDebugSphere";
         private const string GlowLightName = "SuperBallGreenGlow";
@@ -41,6 +49,13 @@ namespace RepoSuperBallEnemy
         private ConfigEntry<float> spawnDistance;
         private ConfigEntry<bool> enableBounceVisuals;
         private ConfigEntry<float> superBallAlpha;
+        private ConfigEntry<bool> enableConceptFace;
+        private ConfigEntry<bool> enableInternalCracks;
+        private ConfigEntry<bool> enableChromeHighlights;
+        private ConfigEntry<float> faceGlowIntensity;
+        private ConfigEntry<float> crackGlowIntensity;
+        private ConfigEntry<float> crackLayerAlpha;
+        private ConfigEntry<float> innerCoreAlpha;
         private ConfigEntry<bool> enableFallbackDebugSphere;
         private ConfigEntry<bool> enablePhysicalBlockingCollider;
         private ConfigEntry<bool> disableInheritedBaseAttacks;
@@ -80,11 +95,18 @@ namespace RepoSuperBallEnemy
 
             enableSuperBall = Config.Bind("General", "EnableSuperBall", true, "Enable creation and test spawning of the Super Ball enemy.");
             superBallDiameter = Config.Bind("Visuals", "SuperBallDiameter", 0.55f, "Runtime sphere diameter in meters. Clamped to 0.40-0.75m for v0.2.x.");
-            emissionIntensity = Config.Bind("Visuals", "MainEmission", 3.25f, "Main sphere green emission multiplier.");
-            superBallAlpha = Config.Bind("Visuals", "MainAlpha", 0.45f, "Main sphere alpha for the translucent glass-rubber Super Ball look.");
+            emissionIntensity = Config.Bind("Visuals", "MainEmission", 3.15f, "Main sphere green emission multiplier.");
+            superBallAlpha = Config.Bind("Visuals", "MainAlpha", 0.38f, "Main sphere alpha for the translucent glass-rubber Super Ball look.");
+            enableConceptFace = Config.Bind("Visuals", "EnableConceptFace", true, "Enable the evil glowing face decal inspired by the concept sheet.");
+            enableInternalCracks = Config.Bind("Visuals", "EnableInternalCracks", true, "Enable procedural internal green crack/glass veins.");
+            enableChromeHighlights = Config.Bind("Visuals", "EnableChromeHighlights", true, "Enable subtle chrome-like white/green highlight decals.");
+            faceGlowIntensity = Config.Bind("Visuals", "FaceGlowIntensity", 5.5f, "Emission multiplier for the evil face decals.");
+            crackGlowIntensity = Config.Bind("Visuals", "CrackGlowIntensity", 4.75f, "Emission multiplier for the internal crack layer.");
+            crackLayerAlpha = Config.Bind("Visuals", "CrackLayerAlpha", 0.72f, "Alpha for the procedural crack/glass vein layer.");
+            innerCoreAlpha = Config.Bind("Visuals", "InnerCoreAlpha", 0.26f, "Alpha for the darker inner glass core.");
             auraEnabled = Config.Bind("Visuals", "AuraEnabled", true, "Enable the pulsing charge aura sphere.");
-            auraAlpha = Config.Bind("Visuals", "AuraAlpha", 0.18f, "Maximum aura alpha during charge warning.");
-            auraScaleMultiplier = Config.Bind("Visuals", "AuraScaleMultiplier", 1.55f, "Aura sphere scale multiplier relative to the main sphere.");
+            auraAlpha = Config.Bind("Visuals", "AuraAlpha", 0.24f, "Maximum aura alpha during charge warning.");
+            auraScaleMultiplier = Config.Bind("Visuals", "AuraScaleMultiplier", 1.70f, "Aura sphere scale multiplier relative to the main sphere.");
             enableBounceVisuals = Config.Bind("Visuals", "EnableBounceVisuals", true, "Enable visual bobbing and rolling on the sphere body.");
             enableFallbackDebugSphere = Config.Bind("Diagnostics", "EnableFallbackDebugSphere", true, "Create a standalone fallback sphere only if the spawned enemy hierarchy is inactive or invisible.");
             enablePhysicalBlockingCollider = Config.Bind("Physics", "EnablePhysicalBlockingCollider", true, "Use a non-trigger sphere collider for early physical blocking tests.");
@@ -406,6 +428,7 @@ namespace RepoSuperBallEnemy
             Rigidbody rigidbody = EnsureSuperBallRigidbody(sphere);
             Light light = EnsurePointLight(sphere.transform, diameter);
             Renderer auraRenderer = EnsureAuraVisual(sphere.transform, diameter);
+            SuperBallConceptVisuals conceptVisuals = EnsureConceptVisuals(prefab, sphere.transform, diameter);
             ColliderCleanupResult colliderCleanup = DisableInheritedColliders(prefab, sphereCollider, "Prefab visual build");
             EnsureVisualMotion(prefab, sphere.transform, visibleCenter, diameter);
             SuperBallBehavior behavior = EnsureSuperBallBehavior(prefab, sphere.transform, auraRenderer == null ? null : auraRenderer.transform, auraRenderer, light, sphereCollider, rigidbody, diameter);
@@ -414,7 +437,7 @@ namespace RepoSuperBallEnemy
             Log.LogInfo($"Prefab visual build renderer cleanup: inheritedRenderersFound={cleanup.InheritedRenderersFound}, disabled={cleanup.DisabledCount}, disabledObjects=[{string.Join(", ", cleanup.DisabledRendererNames.ToArray())}], keptSuperBallRenderer='{GetObjectName(renderer)}'.");
             Log.LogInfo($"Prefab visual build collider cleanup: totalCollidersFound={colliderCleanup.TotalFound}, disabled={colliderCleanup.DisabledCount}, kept={colliderCleanup.KeptCount}, activeAfterCleanup={colliderCleanup.ActiveAfterCleanup}, keptColliders=[{string.Join(", ", colliderCleanup.KeptColliderNames.ToArray())}], disabledColliders=[{string.Join(", ", colliderCleanup.DisabledColliderNames.ToArray())}].");
             Log.LogInfo($"Prefab visual build attack cleanup: attackLikeComponentsFound={attackCleanup.FoundCount}, disabled={attackCleanup.DisabledCount}, disabledComponents=[{string.Join(", ", attackCleanup.DisabledComponentNames.ToArray())}], keptComponents=[{string.Join(", ", attackCleanup.KeptComponentNames.ToArray())}].");
-            Log.LogInfo($"Built runtime sphere visual. Diameter={diameter:0.00}m, colliderEffectiveRadius={radius:0.00}m, localCenter={visibleCenter}, materialColor={FormatColor(GetSuperBallBodyColor())}, emission={GetDebugEmissionIntensity():0.00}, alpha={GetSuperBallAlpha():0.00}, transparencyMode='{GetMaterialTransparencyMode()}', auraRenderer={(auraRenderer != null)}, behaviorAttached={behavior != null}.");
+            Log.LogInfo($"Built runtime sphere visual. Diameter={diameter:0.00}m, colliderEffectiveRadius={radius:0.00}m, localCenter={visibleCenter}, materialColor={FormatColor(GetSuperBallBodyColor())}, emission={GetDebugEmissionIntensity():0.00}, alpha={GetSuperBallAlpha():0.00}, transparencyMode='{GetMaterialTransparencyMode()}', auraRenderer={(auraRenderer != null)}, conceptVisuals={(conceptVisuals != null && conceptVisuals.enabled)}, behaviorAttached={behavior != null}.");
         }
 
         private Material CreateSuperBallMaterial()
@@ -443,15 +466,15 @@ namespace RepoSuperBallEnemy
             }
             if (material.HasProperty("_Metallic"))
             {
-                material.SetFloat("_Metallic", 0.45f);
+                material.SetFloat("_Metallic", 0.30f);
             }
             if (material.HasProperty("_Glossiness"))
             {
-                material.SetFloat("_Glossiness", 0.96f);
+                material.SetFloat("_Glossiness", 1.0f);
             }
             if (material.HasProperty("_Smoothness"))
             {
-                material.SetFloat("_Smoothness", 0.96f);
+                material.SetFloat("_Smoothness", 1.0f);
             }
             if (material.HasProperty("_EmissionColor"))
             {
@@ -461,6 +484,138 @@ namespace RepoSuperBallEnemy
 
             ApplyTransparencySettings(material);
             return material;
+        }
+
+        private Material CreateInnerCoreMaterial()
+        {
+            Material material = CreateTransparentStandardMaterial(
+                "SuperBallInnerCoreMaterial",
+                new Color(0.01f, 0.20f, 0.035f, Mathf.Clamp(innerCoreAlpha.Value, 0.05f, 0.65f)),
+                new Color(0.0f, 0.85f, 0.08f, 1.0f) * Mathf.Clamp(crackGlowIntensity.Value * 0.32f, 0.2f, 3.5f),
+                CreateInnerCoreTexture(),
+                0.05f,
+                0.92f);
+            material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent + 4;
+            return material;
+        }
+
+        private Material CreateCrackShellMaterial()
+        {
+            float alpha = Mathf.Clamp(crackLayerAlpha.Value, 0.10f, 1.0f);
+            Material material = CreateTransparentStandardMaterial(
+                "SuperBallCrackShellMaterial",
+                new Color(0.20f, 1.0f, 0.03f, alpha),
+                new Color(0.04f, 1.0f, 0.02f, 1.0f) * Mathf.Clamp(crackGlowIntensity.Value, 0.5f, 12.0f),
+                CreateCrackTexture(),
+                0.0f,
+                0.98f);
+            material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent + 18;
+            return material;
+        }
+
+        private Material CreateFaceDecalMaterial(Texture2D texture, Color tint, float glowIntensity)
+        {
+            Material material = CreateTransparentStandardMaterial(
+                "SuperBallFaceDecalMaterial",
+                tint,
+                tint * Mathf.Clamp(glowIntensity, 1.0f, 12.0f),
+                texture,
+                0.0f,
+                0.2f);
+            SetCullOff(material);
+            material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent + 40;
+            return material;
+        }
+
+        private Material CreateHighlightMaterial()
+        {
+            Material material = CreateTransparentStandardMaterial(
+                "SuperBallChromeHighlightMaterial",
+                new Color(0.85f, 1.0f, 0.70f, 0.30f),
+                new Color(0.35f, 1.0f, 0.12f, 1.0f) * 1.55f,
+                CreateHighlightTexture(),
+                0.0f,
+                1.0f);
+            SetCullOff(material);
+            material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent + 45;
+            return material;
+        }
+
+        private Material CreateTransparentStandardMaterial(string materialName, Color color, Color emission, Texture2D texture, float metallic, float smoothness)
+        {
+            Shader shader = Shader.Find("Standard");
+            if (shader == null)
+            {
+                shader = Shader.Find("Universal Render Pipeline/Lit");
+            }
+            if (shader == null)
+            {
+                shader = Shader.Find("Unlit/Transparent");
+            }
+            if (shader == null)
+            {
+                shader = Shader.Find("Diffuse");
+            }
+
+            Material material = new Material(shader);
+            material.name = materialName;
+
+            if (material.HasProperty("_Color"))
+            {
+                material.SetColor("_Color", color);
+            }
+            if (material.HasProperty("_BaseColor"))
+            {
+                material.SetColor("_BaseColor", color);
+            }
+            if (texture != null)
+            {
+                if (material.HasProperty("_MainTex"))
+                {
+                    material.SetTexture("_MainTex", texture);
+                }
+                if (material.HasProperty("_BaseMap"))
+                {
+                    material.SetTexture("_BaseMap", texture);
+                }
+                if (material.HasProperty("_EmissionMap"))
+                {
+                    material.SetTexture("_EmissionMap", texture);
+                }
+            }
+            if (material.HasProperty("_Metallic"))
+            {
+                material.SetFloat("_Metallic", metallic);
+            }
+            if (material.HasProperty("_Glossiness"))
+            {
+                material.SetFloat("_Glossiness", smoothness);
+            }
+            if (material.HasProperty("_Smoothness"))
+            {
+                material.SetFloat("_Smoothness", smoothness);
+            }
+            if (material.HasProperty("_EmissionColor"))
+            {
+                material.SetColor("_EmissionColor", emission);
+                material.EnableKeyword("_EMISSION");
+            }
+
+            ApplyTransparencySettings(material);
+            return material;
+        }
+
+        private void SetCullOff(Material material)
+        {
+            if (material == null)
+            {
+                return;
+            }
+
+            if (material.HasProperty("_Cull"))
+            {
+                material.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
+            }
         }
 
         private Renderer EnsureAuraVisual(Transform sphereTransform, float diameter)
@@ -509,6 +664,217 @@ namespace RepoSuperBallEnemy
             return renderer;
         }
 
+        private SuperBallConceptVisuals EnsureConceptVisuals(GameObject root, Transform sphereTransform, float diameter)
+        {
+            if (root == null || sphereTransform == null)
+            {
+                return null;
+            }
+
+            float radius = diameter * 0.5f;
+            bool faceEnabled = enableConceptFace.Value;
+            bool cracksEnabled = enableInternalCracks.Value;
+            bool highlightsEnabled = enableChromeHighlights.Value;
+
+            Renderer innerCoreRenderer = EnsurePrimitiveRenderer(
+                sphereTransform,
+                InnerCoreVisualName,
+                PrimitiveType.Sphere,
+                Vector3.zero,
+                Quaternion.identity,
+                Vector3.one * 0.74f,
+                CreateInnerCoreMaterial(),
+                root.layer);
+            SetRendererEnabled(innerCoreRenderer, cracksEnabled);
+
+            Renderer crackRenderer = EnsurePrimitiveRenderer(
+                sphereTransform,
+                CrackShellVisualName,
+                PrimitiveType.Sphere,
+                Vector3.zero,
+                Quaternion.identity,
+                Vector3.one * 1.012f,
+                CreateCrackShellMaterial(),
+                root.layer);
+            SetRendererEnabled(crackRenderer, cracksEnabled);
+
+            Transform conceptRoot = FindChildTransform(root.transform, ConceptRootName);
+            if (conceptRoot == null)
+            {
+                GameObject conceptObject = new GameObject(ConceptRootName);
+                conceptRoot = conceptObject.transform;
+                conceptRoot.SetParent(root.transform, false);
+            }
+
+            conceptRoot.localPosition = GetSafeSphereLocalCenter(diameter);
+            conceptRoot.localRotation = Quaternion.identity;
+            conceptRoot.localScale = Vector3.one;
+            conceptRoot.gameObject.layer = root.layer;
+            conceptRoot.gameObject.SetActive(true);
+
+            Transform faceRoot = FindChildTransform(conceptRoot, FaceRootName);
+            if (faceRoot == null)
+            {
+                GameObject faceObject = new GameObject(FaceRootName);
+                faceRoot = faceObject.transform;
+                faceRoot.SetParent(conceptRoot, false);
+            }
+
+            faceRoot.localPosition = Vector3.zero;
+            faceRoot.localRotation = Quaternion.identity;
+            faceRoot.localScale = Vector3.one;
+            faceRoot.gameObject.layer = root.layer;
+            faceRoot.gameObject.SetActive(faceEnabled);
+
+            float faceZ = radius * 1.035f;
+            Renderer leftEye = EnsurePrimitiveRenderer(
+                faceRoot,
+                LeftEyeVisualName,
+                PrimitiveType.Quad,
+                new Vector3(-radius * 0.32f, radius * 0.17f, faceZ),
+                Quaternion.identity,
+                new Vector3(radius * 0.58f, radius * 0.23f, 1.0f),
+                CreateFaceDecalMaterial(CreateEyeTexture(false), new Color(0.66f, 1.0f, 0.05f, 1.0f), Mathf.Clamp(faceGlowIntensity.Value, 1.0f, 12.0f)),
+                root.layer);
+            Renderer rightEye = EnsurePrimitiveRenderer(
+                faceRoot,
+                RightEyeVisualName,
+                PrimitiveType.Quad,
+                new Vector3(radius * 0.32f, radius * 0.17f, faceZ),
+                Quaternion.identity,
+                new Vector3(radius * 0.58f, radius * 0.23f, 1.0f),
+                CreateFaceDecalMaterial(CreateEyeTexture(true), new Color(0.66f, 1.0f, 0.05f, 1.0f), Mathf.Clamp(faceGlowIntensity.Value, 1.0f, 12.0f)),
+                root.layer);
+            Renderer grin = EnsurePrimitiveRenderer(
+                faceRoot,
+                GrinVisualName,
+                PrimitiveType.Quad,
+                new Vector3(0.0f, -radius * 0.22f, faceZ + 0.006f),
+                Quaternion.identity,
+                new Vector3(radius * 1.15f, radius * 0.34f, 1.0f),
+                CreateFaceDecalMaterial(CreateGrinTexture(), new Color(0.62f, 1.0f, 0.02f, 1.0f), Mathf.Clamp(faceGlowIntensity.Value * 0.85f, 1.0f, 12.0f)),
+                root.layer);
+
+            Renderer highlightLarge = EnsurePrimitiveRenderer(
+                faceRoot,
+                HighlightVisualName + "Large",
+                PrimitiveType.Quad,
+                new Vector3(-radius * 0.24f, radius * 0.37f, faceZ + 0.011f),
+                Quaternion.Euler(0.0f, 0.0f, -20.0f),
+                new Vector3(radius * 0.40f, radius * 0.17f, 1.0f),
+                CreateHighlightMaterial(),
+                root.layer);
+            Renderer highlightSmall = EnsurePrimitiveRenderer(
+                faceRoot,
+                HighlightVisualName + "Small",
+                PrimitiveType.Quad,
+                new Vector3(radius * 0.22f, radius * 0.32f, faceZ + 0.012f),
+                Quaternion.Euler(0.0f, 0.0f, 24.0f),
+                new Vector3(radius * 0.24f, radius * 0.09f, 1.0f),
+                CreateHighlightMaterial(),
+                root.layer);
+
+            SetRendererEnabled(leftEye, faceEnabled);
+            SetRendererEnabled(rightEye, faceEnabled);
+            SetRendererEnabled(grin, faceEnabled);
+            SetRendererEnabled(highlightLarge, highlightsEnabled);
+            SetRendererEnabled(highlightSmall, highlightsEnabled);
+
+            Light faceLight = EnsureFaceLight(faceRoot, diameter);
+            faceLight.enabled = faceEnabled;
+
+            SuperBallConceptVisuals visuals = root.GetComponent<SuperBallConceptVisuals>();
+            if (visuals == null)
+            {
+                visuals = root.AddComponent<SuperBallConceptVisuals>();
+            }
+
+            visuals.Configure(
+                faceRoot,
+                new[] { leftEye, rightEye, grin },
+                new[] { highlightLarge, highlightSmall },
+                crackRenderer,
+                innerCoreRenderer,
+                faceLight,
+                faceEnabled,
+                cracksEnabled,
+                highlightsEnabled,
+                Mathf.Clamp(faceGlowIntensity.Value, 1.0f, 12.0f),
+                Mathf.Clamp(crackGlowIntensity.Value, 0.5f, 12.0f),
+                Mathf.Clamp(crackLayerAlpha.Value, 0.10f, 1.0f),
+                Mathf.Clamp(innerCoreAlpha.Value, 0.05f, 0.65f));
+
+            Log.LogInfo($"Concept visual setup: faceEnabled={faceEnabled}, cracksEnabled={cracksEnabled}, highlightsEnabled={highlightsEnabled}, faceRoot='{GetHierarchyPath(faceRoot, root.transform)}', crackShell='{GetObjectName(crackRenderer)}', innerCore='{GetObjectName(innerCoreRenderer)}', faceGlow={Mathf.Clamp(faceGlowIntensity.Value, 1.0f, 12.0f):0.00}, crackGlow={Mathf.Clamp(crackGlowIntensity.Value, 0.5f, 12.0f):0.00}.");
+            return visuals;
+        }
+
+        private Renderer EnsurePrimitiveRenderer(Transform parent, string name, PrimitiveType primitiveType, Vector3 localPosition, Quaternion localRotation, Vector3 localScale, Material material, int layer)
+        {
+            Transform child = parent.Find(name);
+            GameObject childObject;
+            if (child == null)
+            {
+                childObject = GameObject.CreatePrimitive(primitiveType);
+                childObject.name = name;
+                childObject.transform.SetParent(parent, false);
+                child = childObject.transform;
+            }
+            else
+            {
+                childObject = child.gameObject;
+            }
+
+            childObject.layer = layer;
+            child.localPosition = localPosition;
+            child.localRotation = localRotation;
+            child.localScale = localScale;
+            childObject.SetActive(true);
+            DisableAllColliders(childObject);
+
+            Renderer renderer = childObject.GetComponent<Renderer>();
+            if (renderer != null)
+            {
+                renderer.material = material;
+                renderer.enabled = true;
+            }
+
+            return renderer;
+        }
+
+        private Light EnsureFaceLight(Transform faceRoot, float diameter)
+        {
+            const string faceLightName = "SuperBallFaceGlowLight";
+            Transform lightTransform = faceRoot.Find(faceLightName);
+            GameObject lightObject;
+            if (lightTransform == null)
+            {
+                lightObject = new GameObject(faceLightName);
+                lightTransform = lightObject.transform;
+                lightTransform.SetParent(faceRoot, false);
+            }
+            else
+            {
+                lightObject = lightTransform.gameObject;
+            }
+
+            lightObject.layer = faceRoot.gameObject.layer;
+            lightTransform.localPosition = new Vector3(0.0f, 0.02f, diameter * 0.46f);
+            lightTransform.localRotation = Quaternion.identity;
+            lightTransform.localScale = Vector3.one;
+
+            Light light = lightObject.GetComponent<Light>();
+            if (light == null)
+            {
+                light = lightObject.AddComponent<Light>();
+            }
+
+            light.type = LightType.Point;
+            light.color = new Color(0.58f, 1.0f, 0.02f, 1.0f);
+            light.range = Mathf.Clamp(diameter * 2.4f, 0.75f, 2.4f);
+            light.intensity = Mathf.Clamp(faceGlowIntensity.Value * 0.28f, 0.15f, 2.2f);
+            return light;
+        }
+
         private Material CreateAuraMaterial(float alpha)
         {
             Shader shader = Shader.Find("Standard");
@@ -553,6 +919,274 @@ namespace RepoSuperBallEnemy
 
             ApplyTransparencySettings(material);
             return material;
+        }
+
+        private static Texture2D CreateEyeTexture(bool mirror)
+        {
+            const int width = 96;
+            const int height = 48;
+            Color[] pixels = CreateClearPixels(width, height);
+            Vector2[] polygon =
+            {
+                new Vector2(0.05f, 0.35f),
+                new Vector2(0.96f, 0.54f),
+                new Vector2(0.78f, 0.86f),
+                new Vector2(0.16f, 0.67f)
+            };
+
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    float u = (x + 0.5f) / width;
+                    float v = (y + 0.5f) / height;
+                    if (mirror)
+                    {
+                        u = 1.0f - u;
+                    }
+
+                    Vector2 p = new Vector2(u, v);
+                    float edgeDistance = DistanceToPolygonEdges(p, polygon);
+                    if (PointInPolygon(p, polygon))
+                    {
+                        float centerGlow = Mathf.Clamp01(1.0f - edgeDistance * 7.0f);
+                        float verticalGlow = Mathf.Clamp01((v - 0.30f) * 2.5f);
+                        Color color = Color.Lerp(new Color(0.10f, 0.95f, 0.02f, 0.72f), new Color(0.92f, 1.0f, 0.20f, 1.0f), Mathf.Max(centerGlow, verticalGlow));
+                        BlendPixel(pixels, width, x, y, color);
+                    }
+                    else if (edgeDistance < 0.10f)
+                    {
+                        float alpha = Mathf.Clamp01(1.0f - edgeDistance / 0.10f) * 0.35f;
+                        BlendPixel(pixels, width, x, y, new Color(0.12f, 1.0f, 0.03f, alpha));
+                    }
+                }
+            }
+
+            return CreateTexture("SuperBallEyeTexture", width, height, pixels);
+        }
+
+        private static Texture2D CreateGrinTexture()
+        {
+            const int width = 192;
+            const int height = 72;
+            Color[] pixels = CreateClearPixels(width, height);
+            Color line = new Color(0.70f, 1.0f, 0.02f, 0.95f);
+            Color glow = new Color(0.05f, 1.0f, 0.02f, 0.45f);
+            Vector2 previous = new Vector2(0.08f, 0.62f);
+
+            for (int i = 1; i <= 20; i++)
+            {
+                float t = i / 20.0f;
+                float curve = 1.0f - Mathf.Pow(Mathf.Abs(t - 0.5f) * 2.0f, 1.7f);
+                Vector2 next = new Vector2(Mathf.Lerp(0.08f, 0.92f, t), 0.52f - curve * 0.22f);
+                DrawGlowLine(pixels, width, height, previous, next, line, 1.25f, glow, 5.0f);
+                previous = next;
+            }
+
+            for (int i = 0; i < 8; i++)
+            {
+                float t = (i + 0.5f) / 8.0f;
+                float x = Mathf.Lerp(0.14f, 0.86f, t);
+                float curve = 1.0f - Mathf.Pow(Mathf.Abs(t - 0.5f) * 2.0f, 1.7f);
+                float top = 0.48f - curve * 0.20f;
+                float bottom = top - UnityEngine.Random.Range(0.12f, 0.28f);
+                DrawGlowLine(pixels, width, height, new Vector2(x, top), new Vector2(x + UnityEngine.Random.Range(-0.035f, 0.035f), bottom), line, 1.05f, glow, 4.0f);
+            }
+
+            return CreateTexture("SuperBallGrinTexture", width, height, pixels);
+        }
+
+        private static Texture2D CreateHighlightTexture()
+        {
+            const int width = 96;
+            const int height = 48;
+            Color[] pixels = CreateClearPixels(width, height);
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    float u = (x + 0.5f) / width;
+                    float v = (y + 0.5f) / height;
+                    float dx = (u - 0.5f) / 0.43f;
+                    float dy = (v - 0.5f) / 0.22f;
+                    float outer = dx * dx + dy * dy;
+                    float inner = ((u - 0.43f) / 0.35f) * ((u - 0.43f) / 0.35f) + ((v - 0.47f) / 0.16f) * ((v - 0.47f) / 0.16f);
+                    if (outer <= 1.0f && inner >= 0.62f)
+                    {
+                        float alpha = Mathf.Clamp01(1.0f - outer) * 0.55f + 0.10f;
+                        BlendPixel(pixels, width, x, y, new Color(0.95f, 1.0f, 0.78f, alpha));
+                    }
+                }
+            }
+
+            return CreateTexture("SuperBallHighlightTexture", width, height, pixels);
+        }
+
+        private static Texture2D CreateCrackTexture()
+        {
+            const int width = 256;
+            const int height = 128;
+            Color[] pixels = CreateClearPixels(width, height);
+            System.Random random = new System.Random(7731);
+            Color hot = new Color(0.74f, 1.0f, 0.02f, 0.95f);
+            Color glow = new Color(0.0f, 1.0f, 0.03f, 0.42f);
+
+            for (int crack = 0; crack < 18; crack++)
+            {
+                Vector2 current = new Vector2((float)random.NextDouble(), (float)random.NextDouble());
+                float angle = Mathf.Lerp(-2.8f, 2.8f, (float)random.NextDouble());
+                int segments = random.Next(3, 7);
+                for (int segment = 0; segment < segments; segment++)
+                {
+                    float length = Mathf.Lerp(0.035f, 0.12f, (float)random.NextDouble());
+                    angle += Mathf.Lerp(-0.75f, 0.75f, (float)random.NextDouble());
+                    Vector2 next = current + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * length;
+                    next.x = Mathf.Repeat(next.x, 1.0f);
+                    next.y = Mathf.Clamp01(next.y);
+                    DrawGlowLine(pixels, width, height, current, next, hot, 0.75f, glow, 4.0f);
+
+                    if (random.NextDouble() > 0.54)
+                    {
+                        float branchAngle = angle + Mathf.Lerp(-1.15f, 1.15f, (float)random.NextDouble());
+                        Vector2 branch = current + new Vector2(Mathf.Cos(branchAngle), Mathf.Sin(branchAngle)) * length * Mathf.Lerp(0.35f, 0.70f, (float)random.NextDouble());
+                        branch.x = Mathf.Repeat(branch.x, 1.0f);
+                        branch.y = Mathf.Clamp01(branch.y);
+                        DrawGlowLine(pixels, width, height, current, branch, hot, 0.52f, glow, 3.0f);
+                    }
+
+                    current = next;
+                }
+            }
+
+            return CreateTexture("SuperBallCrackTexture", width, height, pixels);
+        }
+
+        private static Texture2D CreateInnerCoreTexture()
+        {
+            const int width = 128;
+            const int height = 128;
+            Color[] pixels = CreateClearPixels(width, height);
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    float u = (x + 0.5f) / width;
+                    float v = (y + 0.5f) / height;
+                    float noise = Mathf.PerlinNoise(u * 5.2f + 11.0f, v * 5.2f + 27.0f);
+                    float veins = Mathf.PerlinNoise(u * 16.0f + 6.0f, v * 16.0f + 19.0f);
+                    float alpha = Mathf.Clamp01(0.10f + noise * 0.22f + Mathf.Pow(veins, 5.0f) * 0.45f);
+                    Color color = Color.Lerp(new Color(0.0f, 0.12f, 0.02f, alpha), new Color(0.04f, 0.90f, 0.04f, alpha), Mathf.Pow(veins, 4.0f));
+                    BlendPixel(pixels, width, x, y, color);
+                }
+            }
+
+            return CreateTexture("SuperBallInnerCoreTexture", width, height, pixels);
+        }
+
+        private static Color[] CreateClearPixels(int width, int height)
+        {
+            Color[] pixels = new Color[width * height];
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                pixels[i] = Color.clear;
+            }
+
+            return pixels;
+        }
+
+        private static Texture2D CreateTexture(string name, int width, int height, Color[] pixels)
+        {
+            Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
+            texture.name = name;
+            texture.wrapMode = TextureWrapMode.Clamp;
+            texture.filterMode = FilterMode.Bilinear;
+            texture.SetPixels(pixels);
+            texture.Apply(false, true);
+            return texture;
+        }
+
+        private static void DrawGlowLine(Color[] pixels, int width, int height, Vector2 a, Vector2 b, Color line, float lineThicknessPixels, Color glow, float glowThicknessPixels)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    Vector2 p = new Vector2((x + 0.5f) / width, (y + 0.5f) / height);
+                    float distancePixels = DistanceToSegment(p, a, b) * Mathf.Max(width, height);
+                    if (distancePixels <= glowThicknessPixels)
+                    {
+                        float alpha = Mathf.Clamp01(1.0f - distancePixels / glowThicknessPixels) * glow.a;
+                        BlendPixel(pixels, width, x, y, new Color(glow.r, glow.g, glow.b, alpha));
+                    }
+                    if (distancePixels <= lineThicknessPixels)
+                    {
+                        float alpha = Mathf.Clamp01(1.0f - distancePixels / Mathf.Max(0.01f, lineThicknessPixels)) * line.a;
+                        BlendPixel(pixels, width, x, y, new Color(line.r, line.g, line.b, alpha));
+                    }
+                }
+            }
+        }
+
+        private static float DistanceToSegment(Vector2 p, Vector2 a, Vector2 b)
+        {
+            Vector2 ab = b - a;
+            float denominator = Vector2.Dot(ab, ab);
+            if (denominator < 0.0001f)
+            {
+                return Vector2.Distance(p, a);
+            }
+
+            float t = Mathf.Clamp01(Vector2.Dot(p - a, ab) / denominator);
+            return Vector2.Distance(p, a + ab * t);
+        }
+
+        private static bool PointInPolygon(Vector2 p, Vector2[] polygon)
+        {
+            bool inside = false;
+            int j = polygon.Length - 1;
+            for (int i = 0; i < polygon.Length; i++)
+            {
+                if (((polygon[i].y > p.y) != (polygon[j].y > p.y)) &&
+                    (p.x < (polygon[j].x - polygon[i].x) * (p.y - polygon[i].y) / (polygon[j].y - polygon[i].y + 0.0001f) + polygon[i].x))
+                {
+                    inside = !inside;
+                }
+
+                j = i;
+            }
+
+            return inside;
+        }
+
+        private static float DistanceToPolygonEdges(Vector2 p, Vector2[] polygon)
+        {
+            float distance = float.MaxValue;
+            for (int i = 0; i < polygon.Length; i++)
+            {
+                Vector2 a = polygon[i];
+                Vector2 b = polygon[(i + 1) % polygon.Length];
+                distance = Mathf.Min(distance, DistanceToSegment(p, a, b));
+            }
+
+            return distance;
+        }
+
+        private static void BlendPixel(Color[] pixels, int width, int x, int y, Color source)
+        {
+            int index = y * width + x;
+            Color destination = pixels[index];
+            float outAlpha = source.a + destination.a * (1.0f - source.a);
+            if (outAlpha <= 0.0001f)
+            {
+                pixels[index] = Color.clear;
+                return;
+            }
+
+            pixels[index] = new Color(
+                (source.r * source.a + destination.r * destination.a * (1.0f - source.a)) / outAlpha,
+                (source.g * source.a + destination.g * destination.a * (1.0f - source.a)) / outAlpha,
+                (source.b * source.a + destination.b * destination.a * (1.0f - source.a)) / outAlpha,
+                outAlpha);
         }
 
         private void ApplyTransparencySettings(Material material)
@@ -778,7 +1412,7 @@ namespace RepoSuperBallEnemy
                 Log.LogInfo($"F8 spawn diagnostics [{i}]: visibleSphere='{visibleSphere.name}', worldPosition={FormatVector3(visibleSphere.position)}, localPosition={FormatVector3(visibleSphere.localPosition)}, localScale={FormatVector3(visibleSphere.localScale)}, diameter={diagnostics.Diameter:0.00}.");
                 Log.LogInfo($"F8 spawn diagnostics [{i}]: rendererCount={renderers.Length}, enabledRenderers={enabledRenderers}, inheritedRenderersDisabled={diagnostics.RendererCleanup.DisabledCount}, colliderCount={colliders.Length}, activeColliders={activeColliders}, intentionalActiveColliders={diagnostics.ColliderCleanup.ActiveAfterCleanup}, pointLightEnabled={pointLightEnabled}, fallbackStandaloneCreated={diagnostics.FallbackStandaloneCreated}, fallbackReason='{diagnostics.FallbackReason}'.");
                 Log.LogInfo($"F8 spawn diagnostics [{i}]: colliderCleanup totalFound={diagnostics.ColliderCleanup.TotalFound}, disabled={diagnostics.ColliderCleanup.DisabledCount}, kept={diagnostics.ColliderCleanup.KeptCount}, keptColliders=[{string.Join(", ", diagnostics.ColliderCleanup.KeptColliderNames.ToArray())}], disabledColliders=[{string.Join(", ", diagnostics.ColliderCleanup.DisabledColliderNames.ToArray())}].");
-                Log.LogInfo($"F8 spawn diagnostics [{i}]: activeSuperBallVisibleSphereCount={diagnostics.ActiveVisibleSphereCount}, visibleSphereObjects=[{string.Join(", ", diagnostics.VisibleSphereNames.ToArray())}], auraObject='{GetComponentPath(diagnostics.AuraRenderer, root)}', auraEnabled={diagnostics.AuraRenderer != null && diagnostics.AuraRenderer.enabled}, attackComponentsDisabled={diagnostics.AttackCleanup.DisabledCount}, SuperBallBehaviorAttached={behaviorAttached}.");
+                Log.LogInfo($"F8 spawn diagnostics [{i}]: activeSuperBallVisibleSphereCount={diagnostics.ActiveVisibleSphereCount}, visibleSphereObjects=[{string.Join(", ", diagnostics.VisibleSphereNames.ToArray())}], auraObject='{GetComponentPath(diagnostics.AuraRenderer, root)}', auraEnabled={diagnostics.AuraRenderer != null && diagnostics.AuraRenderer.enabled}, conceptVisualsEnabled={diagnostics.ConceptVisuals != null && diagnostics.ConceptVisuals.enabled}, attackComponentsDisabled={diagnostics.AttackCleanup.DisabledCount}, SuperBallBehaviorAttached={behaviorAttached}.");
                 Log.LogInfo($"F8 spawn diagnostics [{i}]: colliderObject='{GetComponentPath(diagnostics.Collider, root)}', colliderCenter={FormatVector3(diagnostics.Collider == null ? Vector3.zero : diagnostics.Collider.center)}, colliderRadius={diagnostics.ColliderEffectiveRadius:0.00}, colliderIsTrigger={diagnostics.ColliderIsTrigger}, groundedAlignment='{diagnostics.GroundedAlignment}', rigidbodyPresent={diagnostics.Rigidbody != null}, rigidbodyIsKinematic={diagnostics.RigidbodyIsKinematic}, layer={visibleSphere.gameObject.layer}('{LayerMask.LayerToName(visibleSphere.gameObject.layer)}').");
             }
         }
@@ -1477,6 +2111,7 @@ namespace RepoSuperBallEnemy
             SphereCollider sphereCollider = EnsureSphereCollider(sphere, diameter, "F8 spawn visibility");
             Rigidbody rigidbody = EnsureSuperBallRigidbody(sphere);
             Renderer auraRenderer = EnsureAuraVisual(sphereTransform, diameter);
+            SuperBallConceptVisuals conceptVisuals = EnsureConceptVisuals(root, sphereTransform, diameter);
             ColliderCleanupResult colliderCleanup = DisableInheritedColliders(root, sphereCollider, "F8 spawn visibility");
 
             Light pointLight = EnsurePointLight(sphereTransform, diameter);
@@ -1520,6 +2155,7 @@ namespace RepoSuperBallEnemy
                 ActiveVisibleSphereCount = visibleSphereNames.Count,
                 VisibleSphereNames = visibleSphereNames,
                 AuraRenderer = auraRenderer,
+                ConceptVisuals = conceptVisuals,
                 GroundedAlignment = GetGroundedAlignmentText(root, sphereTransform, sphereCollider, diameter)
             };
         }
@@ -1741,6 +2377,31 @@ namespace RepoSuperBallEnemy
             result.ActiveAfterCleanup = CountActiveColliders(after);
             Log.LogInfo($"{context} inherited collider cleanup: totalFound={result.TotalFound}, disabled={result.DisabledCount}, kept={result.KeptCount}, activeAfterCleanup={result.ActiveAfterCleanup}, keptColliders=[{string.Join(", ", result.KeptColliderNames.ToArray())}], disabledColliders=[{string.Join(", ", result.DisabledColliderNames.ToArray())}].");
             return result;
+        }
+
+        private static void DisableAllColliders(GameObject root)
+        {
+            if (root == null)
+            {
+                return;
+            }
+
+            Collider[] colliders = root.GetComponentsInChildren<Collider>(true);
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                if (colliders[i] != null)
+                {
+                    colliders[i].enabled = false;
+                }
+            }
+        }
+
+        private static void SetRendererEnabled(Renderer renderer, bool enabled)
+        {
+            if (renderer != null)
+            {
+                renderer.enabled = enabled;
+            }
         }
 
         private AttackCleanupResult DisableInheritedAttackComponents(GameObject root, string context)
@@ -2013,7 +2674,8 @@ namespace RepoSuperBallEnemy
                     continue;
                 }
 
-                if (IsOwnedSuperBallRenderer(renderer, root.transform))
+                if (string.Equals(renderer.gameObject.name, SphereVisualName, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(renderer.gameObject.name, SpawnDebugSphereName, StringComparison.OrdinalIgnoreCase))
                 {
                     names.Add(GetHierarchyPath(renderer.transform, root.transform));
                 }
@@ -2144,6 +2806,7 @@ namespace RepoSuperBallEnemy
             public int ActiveVisibleSphereCount;
             public List<string> VisibleSphereNames = new List<string>();
             public Renderer AuraRenderer;
+            public SuperBallConceptVisuals ConceptVisuals;
             public string GroundedAlignment;
         }
 

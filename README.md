@@ -2,19 +2,20 @@
 
 Experimental BepInEx/REPOLib mod for R.E.P.O. that adds a test-spawnable neon green "Super Ball from Hell" enemy.
 
-> Status: Prototype / v0.2.0
+> Status: Prototype / v0.2.1
 
 ![Super Ball from Hell concept sheet](Docs/Images/SuperBallFromHell.png)
 
 ## Features
 
 - `F8` test spawn for host/single-player testing.
-- Runtime-created eerie neon green translucent/glossy sphere.
+- Runtime-created eerie neon green translucent/glassy sphere.
+- Concept-style evil face decals, internal crack veins, dark inner core, and chrome-like highlight decals.
 - Default sphere diameter of `0.55m`.
 - Custom `IdleRoam -> ChargeWarning -> ChargeLaunch -> Recovery` behavior scaffold.
 - Roams between level points when available, then physically launches and ricochets.
 - Charge warning ramps bounce, spin, glow, and aura from slow to fast.
-- Pulsing translucent aura sphere provides a fake displaced-air/pressure effect.
+- Pulsing translucent aura sphere provides a fake displaced-air/pressure effect, with face/crack glow pulsing harder during charge.
 - Sound hook log points are present for idle, charge, launch, ricochet, and recovery moments.
 - Inherited colliders are disabled so the active collider set is minimal and intentional.
 - Inherited base enemy renderers are disabled so Animal parts should not show.
@@ -62,7 +63,7 @@ Manual deploy target:
 D:\SteamLibrary\steamapps\common\REPO\BepInEx\plugins\RepoSuperBallEnemy\RepoSuperBallEnemy.dll
 ```
 
-No asset bundle is required for `v0.2.0`; the enemy visual is generated at runtime.
+No asset bundle is required for `v0.2.1`; the enemy visual is generated at runtime.
 
 ## Testing Steps
 
@@ -76,9 +77,10 @@ No asset bundle is required for `v0.2.0`; the enemy visual is generated at runti
 Expected log messages include:
 
 ```text
-REPO Super Ball Enemy 0.2.0 loaded.
+REPO Super Ball Enemy 0.2.1 loaded.
 Selected base enemy ...
 Registered Super Ball ...
+Concept visual setup: faceEnabled=True ...
 Super Ball test spawn requested ...
 F8 spawn diagnostics ...
 Super Ball roam target chosen ...
@@ -102,11 +104,18 @@ EnableSuperBall = true
 SuperBallDiameter = 0.55
 SpawnTestKey = F8
 EnableSpawnPoolInjection = false
-MainEmission = 3.25
-MainAlpha = 0.45
+MainEmission = 3.15
+MainAlpha = 0.38
+EnableConceptFace = true
+EnableInternalCracks = true
+EnableChromeHighlights = true
+FaceGlowIntensity = 5.5
+CrackGlowIntensity = 4.75
+CrackLayerAlpha = 0.72
+InnerCoreAlpha = 0.26
 AuraEnabled = true
-AuraAlpha = 0.18
-AuraScaleMultiplier = 1.55
+AuraAlpha = 0.24
+AuraScaleMultiplier = 1.7
 EnableBounceVisuals = true
 SpawnDistance = 4
 EnableFallbackDebugSphere = true
@@ -134,10 +143,10 @@ Keep `EnableSpawnPoolInjection = false` until the controlled `F8` test spawn is 
 
 ## Known Limitations
 
-- No authored Unity prefab yet.
+- No authored Unity prefab yet; the concept look is assembled from procedural runtime layers.
 - Room-to-room roaming is heuristic and uses level points/navmesh sampling where available.
 - Physical launch damage is not applied yet.
-- Uses a runtime primitive sphere for `v0.2.0`.
+- Uses runtime primitive spheres/quads/textures for `v0.2.1`.
 - Spawn pool integration is disabled by default.
 - Requires local game DLL references to build.
 - Player damage is not wired yet. Contact currently logs the intended damage amount.

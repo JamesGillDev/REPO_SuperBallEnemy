@@ -73,6 +73,35 @@ namespace RepoSuperBallEnemy
         private Vector3 squashScale = Vector3.one;
         private readonly List<Collider> selfColliders = new List<Collider>();
 
+        public SuperBallState CurrentState
+        {
+            get { return state; }
+        }
+
+        public float VisualChargeIntensity
+        {
+            get
+            {
+                if (state == SuperBallState.ChargeWarning)
+                {
+                    return ChargeWarningSeconds <= 0.0f ? 1.0f : Mathf.Clamp01(stateTimer / ChargeWarningSeconds);
+                }
+
+                if (state == SuperBallState.ChargeLaunch)
+                {
+                    return 1.0f;
+                }
+
+                if (state == SuperBallState.Recovery)
+                {
+                    float progress = RecoveryDuration <= 0.0f ? 1.0f : Mathf.Clamp01(stateTimer / RecoveryDuration);
+                    return 1.0f - progress;
+                }
+
+                return 0.0f;
+            }
+        }
+
         public static void SetLogger(ManualLogSource logger)
         {
             Log = logger;
