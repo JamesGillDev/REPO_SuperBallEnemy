@@ -18,20 +18,23 @@ namespace RepoSuperBallEnemy
     {
         public const string PluginGuid = "James.RepoSuperBallEnemy";
         public const string PluginName = "REPO Super Ball Enemy";
-        public const string PluginVersion = "0.2.1";
+        public const string PluginVersion = "0.3.1";
 
         private const string EnemySetupName = "SuperBallEnemySetup";
         private const string EnemyPrefabName = "SuperBallEnemy";
         private const string EnemyDisplayName = "Super Ball";
         private const string SphereVisualName = "SuperBallChromeSphere";
         private const string AuraVisualName = "SuperBallAuraSphere";
+        private const string AuraOuterVisualName = "SuperBallAuraOuterShell";
+        private const string AuraMidVisualName = "SuperBallAuraMidPulseShell";
+        private const string AuraDistortionVisualName = "SuperBallAuraDistortionShell";
         private const string ConceptRootName = "SuperBallConceptVisuals";
         private const string InnerCoreVisualName = "SuperBallInnerCore";
         private const string CrackShellVisualName = "SuperBallCrackShell";
-        private const string FaceRootName = "SuperBallHellFace";
-        private const string LeftEyeVisualName = "SuperBallLeftEye";
-        private const string RightEyeVisualName = "SuperBallRightEye";
-        private const string GrinVisualName = "SuperBallGrin";
+        private const string FaceRootName = "SuperBallFace";
+        private const string LeftEyeVisualName = "LeftEye";
+        private const string RightEyeVisualName = "RightEye";
+        private const string GrinVisualName = "Grin";
         private const string HighlightVisualName = "SuperBallChromeHighlight";
         private const string SpawnDebugSphereName = "SuperBallF8VisibilitySphere";
         private const string StandaloneDebugSphereName = "SuperBallStandaloneDebugSphere";
@@ -49,10 +52,23 @@ namespace RepoSuperBallEnemy
         private ConfigEntry<float> spawnDistance;
         private ConfigEntry<bool> enableBounceVisuals;
         private ConfigEntry<float> superBallAlpha;
+        private ConfigEntry<float> reflectiveSmoothness;
+        private ConfigEntry<float> reflectiveMetallic;
+        private ConfigEntry<float> innerGlowAlpha;
+        private ConfigEntry<string> innerCoreColor;
         private ConfigEntry<bool> enableConceptFace;
         private ConfigEntry<bool> enableInternalCracks;
         private ConfigEntry<bool> enableChromeHighlights;
         private ConfigEntry<float> faceGlowIntensity;
+        private ConfigEntry<bool> faceEnabled;
+        private ConfigEntry<float> faceAppearAtChargeProgress;
+        private ConfigEntry<float> faceEmissionMin;
+        private ConfigEntry<float> faceEmissionMax;
+        private ConfigEntry<string> faceEyeColor;
+        private ConfigEntry<string> faceMouthColor;
+        private ConfigEntry<bool> faceTeethEnabled;
+        private ConfigEntry<float> faceMaxAlpha;
+        private ConfigEntry<float> faceScale;
         private ConfigEntry<float> crackGlowIntensity;
         private ConfigEntry<float> crackLayerAlpha;
         private ConfigEntry<float> innerCoreAlpha;
@@ -71,16 +87,37 @@ namespace RepoSuperBallEnemy
         private ConfigEntry<bool> auraEnabled;
         private ConfigEntry<float> auraAlpha;
         private ConfigEntry<float> auraScaleMultiplier;
+        private ConfigEntry<float> auraIdleAlpha;
+        private ConfigEntry<float> auraChargeAlpha;
+        private ConfigEntry<float> auraPulseSpeedMin;
+        private ConfigEntry<float> auraPulseSpeedMax;
+        private ConfigEntry<float> auraMaxScale;
+        private ConfigEntry<bool> disableHardAuraShell;
         private ConfigEntry<float> roamSpeed;
         private ConfigEntry<float> idleBounceAmplitude;
         private ConfigEntry<float> idleBounceFrequency;
+        private ConfigEntry<float> roamBounceHeight;
+        private ConfigEntry<float> roamBounceFrequency;
         private ConfigEntry<float> chargeBounceAmplitudeMin;
         private ConfigEntry<float> chargeBounceAmplitudeMax;
+        private ConfigEntry<float> chargeBounceHeight;
+        private ConfigEntry<float> chargeBounceFrequency;
+        private ConfigEntry<float> elasticSquashAmount;
         private ConfigEntry<float> chargeSpinSpeedMin;
         private ConfigEntry<float> chargeSpinSpeedMax;
         private ConfigEntry<float> chargeSpeed;
         private ConfigEntry<int> maxRicochetCount;
         private ConfigEntry<float> recoveryDuration;
+        private ConfigEntry<float> chargeScaleMultiplier;
+        private ConfigEntry<float> chargeScaleCurvePower;
+        private ConfigEntry<bool> lightningEnabled;
+        private ConfigEntry<int> lightningArcCount;
+        private ConfigEntry<float> lightningDuringChargeProgress;
+        private ConfigEntry<float> lightningEmission;
+        private ConfigEntry<bool> lightningIdleVisible;
+        private ConfigEntry<float> lightningThickness;
+        private ConfigEntry<float> lightningJitter;
+        private ConfigEntry<float> lightningRefreshRate;
 
         private EnemySetup superBallSetup;
         private GameObject superBallPrefab;
@@ -95,18 +132,37 @@ namespace RepoSuperBallEnemy
 
             enableSuperBall = Config.Bind("General", "EnableSuperBall", true, "Enable creation and test spawning of the Super Ball enemy.");
             superBallDiameter = Config.Bind("Visuals", "SuperBallDiameter", 0.55f, "Runtime sphere diameter in meters. Clamped to 0.40-0.75m for v0.2.x.");
-            emissionIntensity = Config.Bind("Visuals", "MainEmission", 3.15f, "Main sphere green emission multiplier.");
-            superBallAlpha = Config.Bind("Visuals", "MainAlpha", 0.38f, "Main sphere alpha for the translucent glass-rubber Super Ball look.");
-            enableConceptFace = Config.Bind("Visuals", "EnableConceptFace", true, "Enable the evil glowing face decal inspired by the concept sheet.");
+            emissionIntensity = Config.Bind("Visuals", "MainEmission", 1.75f, "Main sphere green emission multiplier.");
+            superBallAlpha = Config.Bind("Visuals", "MainAlpha", 0.55f, "Main sphere alpha for the translucent glass-rubber Super Ball look.");
+            reflectiveSmoothness = Config.Bind("Visuals", "ReflectiveSmoothness", 1.0f, "Smoothness/glossiness for the wet reflective shell.");
+            reflectiveMetallic = Config.Bind("Visuals", "ReflectiveMetallic", 0.35f, "Metallic/specular helper for fake wet reflectivity.");
+            innerGlowAlpha = Config.Bind("Visuals", "InnerGlowAlpha", 0.55f, "Alpha for the inner wet/glass green glow.");
+            innerCoreColor = Config.Bind("Visuals", "InnerCoreColor", "#00180A", "HTML color for the emerald-black inner core.");
+            enableConceptFace = Config.Bind("Visuals", "EnableConceptFace", true, "Legacy alias for enabling the evil glowing face decal.");
             enableInternalCracks = Config.Bind("Visuals", "EnableInternalCracks", true, "Enable procedural internal green crack/glass veins.");
             enableChromeHighlights = Config.Bind("Visuals", "EnableChromeHighlights", true, "Enable subtle chrome-like white/green highlight decals.");
             faceGlowIntensity = Config.Bind("Visuals", "FaceGlowIntensity", 5.5f, "Emission multiplier for the evil face decals.");
+            faceEnabled = Config.Bind("Visuals", "FaceEnabled", true, "Enable the charge-only demonic face.");
+            faceAppearAtChargeProgress = Config.Bind("Visuals", "FaceAppearAtChargeProgress", 0.25f, "Charge progress at which the face begins fading in.");
+            faceEmissionMin = Config.Bind("Visuals", "FaceEmissionMin", 1.0f, "Minimum face emission as it starts appearing.");
+            faceEmissionMax = Config.Bind("Visuals", "FaceEmissionMax", 6.0f, "Maximum face emission immediately before launch.");
+            faceEyeColor = Config.Bind("Visuals", "FaceEyeColor", "#DFFF2A", "HTML color for the glowing demonic eyes.");
+            faceMouthColor = Config.Bind("Visuals", "FaceMouthColor", "#F3FF78", "HTML color for the grin and teeth.");
+            faceTeethEnabled = Config.Bind("Visuals", "FaceTeethEnabled", true, "Enable tooth segments inside the grin.");
+            faceMaxAlpha = Config.Bind("Visuals", "FaceMaxAlpha", 0.95f, "Maximum alpha for face decals.");
+            faceScale = Config.Bind("Visuals", "FaceScale", 1.0f, "Scale multiplier for eye/grin/tooth face decals.");
             crackGlowIntensity = Config.Bind("Visuals", "CrackGlowIntensity", 4.75f, "Emission multiplier for the internal crack layer.");
             crackLayerAlpha = Config.Bind("Visuals", "CrackLayerAlpha", 0.72f, "Alpha for the procedural crack/glass vein layer.");
-            innerCoreAlpha = Config.Bind("Visuals", "InnerCoreAlpha", 0.26f, "Alpha for the darker inner glass core.");
+            innerCoreAlpha = Config.Bind("Visuals", "InnerCoreAlpha", 0.55f, "Alpha for the darker inner glass core.");
             auraEnabled = Config.Bind("Visuals", "AuraEnabled", true, "Enable the pulsing charge aura sphere.");
             auraAlpha = Config.Bind("Visuals", "AuraAlpha", 0.24f, "Maximum aura alpha during charge warning.");
             auraScaleMultiplier = Config.Bind("Visuals", "AuraScaleMultiplier", 1.70f, "Aura sphere scale multiplier relative to the main sphere.");
+            auraIdleAlpha = Config.Bind("Visuals", "AuraIdleAlpha", 0.0f, "Barely visible idle pressure-field alpha.");
+            auraChargeAlpha = Config.Bind("Visuals", "AuraChargeAlpha", 0.12f, "Charge warning pressure-field alpha.");
+            auraPulseSpeedMin = Config.Bind("Visuals", "AuraPulseSpeedMin", 1.0f, "Slow aura pulse speed at charge start.");
+            auraPulseSpeedMax = Config.Bind("Visuals", "AuraPulseSpeedMax", 7.0f, "Fast aura pulse speed near launch.");
+            auraMaxScale = Config.Bind("Visuals", "AuraMaxScale", 1.45f, "Maximum aura shell scale during charge warning.");
+            disableHardAuraShell = Config.Bind("Visuals", "DisableHardAuraShell", true, "Disable the hard outer aura shell and keep only soft pressure glow.");
             enableBounceVisuals = Config.Bind("Visuals", "EnableBounceVisuals", true, "Enable visual bobbing and rolling on the sphere body.");
             enableFallbackDebugSphere = Config.Bind("Diagnostics", "EnableFallbackDebugSphere", true, "Create a standalone fallback sphere only if the spawned enemy hierarchy is inactive or invisible.");
             enablePhysicalBlockingCollider = Config.Bind("Physics", "EnablePhysicalBlockingCollider", true, "Use a non-trigger sphere collider for early physical blocking tests.");
@@ -120,16 +176,31 @@ namespace RepoSuperBallEnemy
             bounceVisualSpeed = Config.Bind("Behavior", "BounceVisualSpeed", 1.8f, "Legacy visual bounce speed fallback when custom behavior is disabled.");
             chargeSpinMaxSpeed = Config.Bind("Behavior", "ChargeSpinMaxSpeed", 1080.0f, "Legacy maximum visual spin speed during charge warning.");
             chargeAuraScale = Config.Bind("Behavior", "ChargeAuraScale", 2.25f, "Aura/light multiplier used during charge warning.");
-            roamSpeed = Config.Bind("Behavior", "RoamSpeed", 1.25f, "Idle roam movement speed.");
+            roamSpeed = Config.Bind("Behavior", "RoamSpeed", 2.0f, "Idle roam movement speed.");
             idleBounceAmplitude = Config.Bind("Behavior", "IdleBounceAmplitude", 0.06f, "Idle roam bounce amplitude.");
             idleBounceFrequency = Config.Bind("Behavior", "IdleBounceFrequency", 1.55f, "Idle roam bounce frequency.");
+            roamBounceHeight = Config.Bind("Behavior", "RoamBounceHeight", 0.22f, "Visible roam bounce height.");
+            roamBounceFrequency = Config.Bind("Behavior", "RoamBounceFrequency", 2.1f, "Visible roam bounce frequency.");
             chargeBounceAmplitudeMin = Config.Bind("Behavior", "ChargeBounceAmplitudeMin", 0.04f, "Charge warning starting bounce amplitude.");
             chargeBounceAmplitudeMax = Config.Bind("Behavior", "ChargeBounceAmplitudeMax", 0.22f, "Charge warning maximum bounce amplitude.");
+            chargeBounceHeight = Config.Bind("Behavior", "ChargeBounceHeight", 0.28f, "Visible charge bounce height near launch.");
+            chargeBounceFrequency = Config.Bind("Behavior", "ChargeBounceFrequency", 4.0f, "Visible charge bounce frequency near launch.");
+            elasticSquashAmount = Config.Bind("Behavior", "ElasticSquashAmount", 0.18f, "Squash/stretch amount on bounce and ricochet impacts.");
             chargeSpinSpeedMin = Config.Bind("Behavior", "ChargeSpinSpeedMin", 120.0f, "Charge warning starting spin speed.");
             chargeSpinSpeedMax = Config.Bind("Behavior", "ChargeSpinSpeedMax", 1320.0f, "Charge warning maximum spin speed.");
             chargeSpeed = Config.Bind("Behavior", "ChargeSpeed", 9.5f, "Physical charge launch movement speed.");
             maxRicochetCount = Config.Bind("Behavior", "MaxRicochetCount", 3, "Maximum wall ricochets during one charge launch.");
             recoveryDuration = Config.Bind("Behavior", "RecoveryDuration", 1.25f, "Brief calm-down duration after a charge burst.");
+            chargeScaleMultiplier = Config.Bind("Behavior", "ChargeScaleMultiplier", 1.75f, "Maximum visual/collider scale multiplier during charge warning.");
+            chargeScaleCurvePower = Config.Bind("Behavior", "ChargeScaleCurvePower", 1.6f, "Curve power for gradual charge-up growth.");
+            lightningEnabled = Config.Bind("Behavior", "LightningEnabled", true, "Enable procedural green/yellow electric arcs during late charge and launch.");
+            lightningArcCount = Config.Bind("Behavior", "LightningArcCount", 4, "Number of procedural lightning arcs.");
+            lightningDuringChargeProgress = Config.Bind("Behavior", "LightningDuringChargeProgress", 0.70f, "Charge progress at which lightning starts.");
+            lightningEmission = Config.Bind("Behavior", "LightningEmission", 4.0f, "Lightning emission/brightness multiplier.");
+            lightningIdleVisible = Config.Bind("Behavior", "LightningIdleVisible", false, "Keep lightning hidden during idle/recovery.");
+            lightningThickness = Config.Bind("Behavior", "LightningThickness", 0.018f, "Maximum lightning line thickness.");
+            lightningJitter = Config.Bind("Behavior", "LightningJitter", 0.18f, "Maximum local jitter for procedural arcs.");
+            lightningRefreshRate = Config.Bind("Behavior", "LightningRefreshRate", 0.07f, "Seconds between lightning arc redraws while active.");
             spawnTestKey = Config.Bind("Testing", "SpawnTestKey", KeyCode.F8, "Press this key as host/single-player to spawn Super Ball near the local player.");
             spawnDistance = Config.Bind("Testing", "SpawnDistance", 4.0f, "Meters in front of the local player/camera for test spawning.");
             enableSpawnPoolInjection = Config.Bind("Spawning", "EnableSpawnPoolInjection", false, "If true, also inject Super Ball into the vanilla enemy director list using the base enemy difficulty.");
@@ -137,7 +208,8 @@ namespace RepoSuperBallEnemy
             SuperBallBehavior.SetLogger(Log);
 
             Log.LogInfo($"{PluginName} {PluginVersion} loaded.");
-            Log.LogInfo($"Runtime v0.2 uses REPOLib, a cloned vanilla enemy prefab, owned Super Ball visuals, and inherited attack suppression. Test spawn key: {spawnTestKey.Value}.");
+            Log.LogInfo($"Runtime v0.3.1 uses REPOLib, a cloned vanilla enemy prefab, owned Super Ball visuals, collision-predicted movement, and inherited attack suppression. Test spawn key: {spawnTestKey.Value}.");
+            Log.LogInfo($"Legacy compatibility config retained: FaceGlowIntensity={faceGlowIntensity.Value:0.00}, AuraAlpha={auraAlpha.Value:0.00}, AuraScaleMultiplier={auraScaleMultiplier.Value:0.00}, IdleBounceAmplitude={idleBounceAmplitude.Value:0.00}, IdleBounceFrequency={idleBounceFrequency.Value:0.00}, ChargeBounceAmplitudeMin={chargeBounceAmplitudeMin.Value:0.00}, ChargeBounceAmplitudeMax={chargeBounceAmplitudeMax.Value:0.00}, BounceVisualHeight={bounceVisualHeight.Value:0.00}, BounceVisualSpeed={bounceVisualSpeed.Value:0.00}, ChargeSpinMaxSpeed={chargeSpinMaxSpeed.Value:0.00}.");
         }
 
         private IEnumerator Start()
@@ -425,13 +497,14 @@ namespace RepoSuperBallEnemy
             }
 
             SphereCollider sphereCollider = EnsureSphereCollider(sphere, diameter, "Prefab visual build");
-            Rigidbody rigidbody = EnsureSuperBallRigidbody(sphere);
+            Rigidbody rigidbody = EnsureSuperBallRigidbody(prefab, sphere);
             Light light = EnsurePointLight(sphere.transform, diameter);
-            Renderer auraRenderer = EnsureAuraVisual(sphere.transform, diameter);
+            SuperBallAuraField auraField = EnsureAuraVisual(sphere.transform, light, diameter, out Renderer auraRenderer);
+            SuperBallLightningArcs lightning = EnsureLightningVisual(sphere.transform);
             SuperBallConceptVisuals conceptVisuals = EnsureConceptVisuals(prefab, sphere.transform, diameter);
             ColliderCleanupResult colliderCleanup = DisableInheritedColliders(prefab, sphereCollider, "Prefab visual build");
             EnsureVisualMotion(prefab, sphere.transform, visibleCenter, diameter);
-            SuperBallBehavior behavior = EnsureSuperBallBehavior(prefab, sphere.transform, auraRenderer == null ? null : auraRenderer.transform, auraRenderer, light, sphereCollider, rigidbody, diameter);
+            SuperBallBehavior behavior = EnsureSuperBallBehavior(prefab, sphere.transform, auraRenderer == null ? null : auraRenderer.transform, auraRenderer, auraField, lightning, light, sphereCollider, rigidbody, diameter);
 
             LogVisualStats(prefab, "Prefab visual build");
             Log.LogInfo($"Prefab visual build renderer cleanup: inheritedRenderersFound={cleanup.InheritedRenderersFound}, disabled={cleanup.DisabledCount}, disabledObjects=[{string.Join(", ", cleanup.DisabledRendererNames.ToArray())}], keptSuperBallRenderer='{GetObjectName(renderer)}'.");
@@ -453,8 +526,11 @@ namespace RepoSuperBallEnemy
             }
 
             Material material = new Material(shader);
+            material.name = "SuperBallWetReflectiveShell";
             Color bodyColor = GetSuperBallBodyColor();
             Color emissionColor = GetSuperBallEmissionColor() * GetDebugEmissionIntensity();
+            float metallic = Mathf.Clamp(reflectiveMetallic.Value, 0.0f, 1.0f);
+            float smoothness = Mathf.Clamp(reflectiveSmoothness.Value, 0.0f, 1.0f);
 
             if (material.HasProperty("_Color"))
             {
@@ -466,15 +542,19 @@ namespace RepoSuperBallEnemy
             }
             if (material.HasProperty("_Metallic"))
             {
-                material.SetFloat("_Metallic", 0.30f);
+                material.SetFloat("_Metallic", metallic);
             }
             if (material.HasProperty("_Glossiness"))
             {
-                material.SetFloat("_Glossiness", 1.0f);
+                material.SetFloat("_Glossiness", smoothness);
             }
             if (material.HasProperty("_Smoothness"))
             {
-                material.SetFloat("_Smoothness", 1.0f);
+                material.SetFloat("_Smoothness", smoothness);
+            }
+            if (material.HasProperty("_SpecColor"))
+            {
+                material.SetColor("_SpecColor", new Color(0.78f, 1.0f, 0.58f, 1.0f));
             }
             if (material.HasProperty("_EmissionColor"))
             {
@@ -483,18 +563,21 @@ namespace RepoSuperBallEnemy
             }
 
             ApplyTransparencySettings(material);
+            Log.LogInfo($"Super Ball wet material setup: shader='{material.shader.name}', color={FormatColor(bodyColor)}, emission={FormatColor(emissionColor)}, metallic={metallic:0.00}, smoothness={smoothness:0.00}, alpha={GetSuperBallAlpha():0.00}, transparentMode='{GetMaterialTransparencyMode()}'.");
             return material;
         }
 
         private Material CreateInnerCoreMaterial()
         {
+            Color coreColor = GetInnerCoreColor();
+            coreColor.a = Mathf.Clamp(innerCoreAlpha.Value, 0.10f, 0.85f);
             Material material = CreateTransparentStandardMaterial(
                 "SuperBallInnerCoreMaterial",
-                new Color(0.01f, 0.20f, 0.035f, Mathf.Clamp(innerCoreAlpha.Value, 0.05f, 0.65f)),
-                new Color(0.0f, 0.85f, 0.08f, 1.0f) * Mathf.Clamp(crackGlowIntensity.Value * 0.32f, 0.2f, 3.5f),
+                coreColor,
+                new Color(0.0f, 0.42f, 0.08f, 1.0f) * Mathf.Clamp(GetDebugEmissionIntensity() * 0.28f, 0.05f, 0.85f),
                 CreateInnerCoreTexture(),
-                0.05f,
-                0.92f);
+                Mathf.Clamp(reflectiveMetallic.Value * 0.25f, 0.0f, 0.25f),
+                Mathf.Clamp(reflectiveSmoothness.Value, 0.75f, 1.0f));
             material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent + 4;
             return material;
         }
@@ -531,8 +614,8 @@ namespace RepoSuperBallEnemy
         {
             Material material = CreateTransparentStandardMaterial(
                 "SuperBallChromeHighlightMaterial",
-                new Color(0.85f, 1.0f, 0.70f, 0.30f),
-                new Color(0.35f, 1.0f, 0.12f, 1.0f) * 1.55f,
+                new Color(0.96f, 1.0f, 0.76f, 0.52f),
+                new Color(0.65f, 1.0f, 0.18f, 1.0f) * 2.25f,
                 CreateHighlightTexture(),
                 0.0f,
                 1.0f);
@@ -618,8 +701,9 @@ namespace RepoSuperBallEnemy
             }
         }
 
-        private Renderer EnsureAuraVisual(Transform sphereTransform, float diameter)
+        private SuperBallAuraField EnsureAuraVisual(Transform sphereTransform, Light glowLight, float diameter, out Renderer primaryAuraRenderer)
         {
+            primaryAuraRenderer = null;
             if (sphereTransform == null)
             {
                 return null;
@@ -642,7 +726,7 @@ namespace RepoSuperBallEnemy
             auraObject.layer = sphereTransform.gameObject.layer;
             auraTransform.localPosition = Vector3.zero;
             auraTransform.localRotation = Quaternion.identity;
-            auraTransform.localScale = Vector3.one * Mathf.Clamp(auraScaleMultiplier.Value, 1.05f, 2.5f);
+            auraTransform.localScale = Vector3.one;
 
             Collider[] auraColliders = auraObject.GetComponentsInChildren<Collider>(true);
             for (int i = 0; i < auraColliders.Length; i++)
@@ -653,15 +737,65 @@ namespace RepoSuperBallEnemy
                 }
             }
 
-            Renderer renderer = auraObject.GetComponent<Renderer>();
-            if (renderer != null)
+            Renderer oldRenderer = auraObject.GetComponent<Renderer>();
+            if (oldRenderer != null)
             {
-                renderer.material = CreateAuraMaterial(0.0f);
-                renderer.enabled = false;
+                oldRenderer.enabled = false;
             }
 
-            Log.LogInfo($"Aura visual setup: auraEnabled={auraEnabled.Value}, object='{AuraVisualName}', diameter={diameter:0.00}, localScale={FormatVector3(auraTransform.localScale)}, maxAlpha={Mathf.Clamp(auraAlpha.Value, 0.02f, 0.45f):0.00}.");
-            return renderer;
+            Renderer outer = EnsurePrimitiveRenderer(auraTransform, AuraOuterVisualName, PrimitiveType.Sphere, Vector3.zero, Quaternion.identity, Vector3.one * 1.18f, CreateAuraMaterial(0.0f), sphereTransform.gameObject.layer);
+            Renderer mid = EnsurePrimitiveRenderer(auraTransform, AuraMidVisualName, PrimitiveType.Sphere, Vector3.zero, Quaternion.identity, Vector3.one * 1.08f, CreateAuraMaterial(0.0f), sphereTransform.gameObject.layer);
+            Renderer distortion = EnsurePrimitiveRenderer(auraTransform, AuraDistortionVisualName, PrimitiveType.Sphere, Vector3.zero, Quaternion.identity, Vector3.one * 1.32f, CreateAuraMaterial(0.0f), sphereTransform.gameObject.layer);
+            SetRendererEnabled(outer, false);
+            SetRendererEnabled(mid, false);
+            SetRendererEnabled(distortion, false);
+            primaryAuraRenderer = outer;
+
+            SuperBallAuraField auraField = auraObject.GetComponent<SuperBallAuraField>();
+            if (auraField == null)
+            {
+                auraField = auraObject.AddComponent<SuperBallAuraField>();
+            }
+
+            auraField.Configure(
+                outer,
+                mid,
+                distortion,
+                glowLight,
+                Mathf.Clamp(auraIdleAlpha.Value, 0.0f, 0.18f),
+                Mathf.Clamp(auraChargeAlpha.Value, 0.02f, 0.45f),
+                Mathf.Clamp(auraPulseSpeedMin.Value, 0.1f, 5.0f),
+                Mathf.Clamp(auraPulseSpeedMax.Value, 0.5f, 16.0f),
+                Mathf.Clamp(auraMaxScale.Value, 1.1f, 3.0f),
+                Mathf.Clamp(GetDebugEmissionIntensity() * 0.85f, 0.15f, 3.0f),
+                disableHardAuraShell.Value);
+
+            Log.LogInfo($"Aura visual setup: auraEnabled={auraEnabled.Value}, object='{AuraVisualName}', shells=[outer={!disableHardAuraShell.Value}, mid=true, distortion=true], diameter={diameter:0.00}, idleAlpha={Mathf.Clamp(auraIdleAlpha.Value, 0.0f, 0.18f):0.00}, chargeAlpha={Mathf.Clamp(auraChargeAlpha.Value, 0.02f, 0.45f):0.00}, maxScale={Mathf.Clamp(auraMaxScale.Value, 1.1f, 3.0f):0.00}.");
+            return auraField;
+        }
+
+        private SuperBallLightningArcs EnsureLightningVisual(Transform sphereTransform)
+        {
+            if (sphereTransform == null)
+            {
+                return null;
+            }
+
+            SuperBallLightningArcs lightning = sphereTransform.GetComponent<SuperBallLightningArcs>();
+            if (lightning == null)
+            {
+                lightning = sphereTransform.gameObject.AddComponent<SuperBallLightningArcs>();
+            }
+
+            lightning.Configure(
+                lightningEnabled.Value,
+                Mathf.Clamp(lightningArcCount.Value, 1, 10),
+                Mathf.Clamp(lightningEmission.Value, 0.5f, 12.0f),
+                lightningIdleVisible.Value,
+                Mathf.Clamp(lightningThickness.Value, 0.004f, 0.05f),
+                Mathf.Clamp(lightningJitter.Value, 0.02f, 0.5f),
+                Mathf.Clamp(lightningRefreshRate.Value, 0.03f, 0.20f));
+            return lightning;
         }
 
         private SuperBallConceptVisuals EnsureConceptVisuals(GameObject root, Transform sphereTransform, float diameter)
@@ -672,7 +806,7 @@ namespace RepoSuperBallEnemy
             }
 
             float radius = diameter * 0.5f;
-            bool faceEnabled = enableConceptFace.Value;
+            bool faceVisibleEnabled = enableConceptFace.Value && faceEnabled.Value;
             bool cracksEnabled = enableInternalCracks.Value;
             bool highlightsEnabled = enableChromeHighlights.Value;
 
@@ -724,36 +858,41 @@ namespace RepoSuperBallEnemy
             faceRoot.localRotation = Quaternion.identity;
             faceRoot.localScale = Vector3.one;
             faceRoot.gameObject.layer = root.layer;
-            faceRoot.gameObject.SetActive(faceEnabled);
+            faceRoot.gameObject.SetActive(false);
 
-            float faceZ = radius * 1.035f;
+            float faceZ = radius * 0.70f;
+            float faceVisualScale = Mathf.Clamp(faceScale.Value, 0.55f, 1.65f);
+            Color eyeColor = GetFaceEyeColor();
+            Color mouthColor = GetFaceMouthColor();
             Renderer leftEye = EnsurePrimitiveRenderer(
                 faceRoot,
                 LeftEyeVisualName,
                 PrimitiveType.Quad,
-                new Vector3(-radius * 0.32f, radius * 0.17f, faceZ),
+                new Vector3(-radius * 0.34f, radius * 0.18f, faceZ),
                 Quaternion.identity,
-                new Vector3(radius * 0.58f, radius * 0.23f, 1.0f),
-                CreateFaceDecalMaterial(CreateEyeTexture(false), new Color(0.66f, 1.0f, 0.05f, 1.0f), Mathf.Clamp(faceGlowIntensity.Value, 1.0f, 12.0f)),
+                new Vector3(radius * 0.66f * faceVisualScale, radius * 0.28f * faceVisualScale, 1.0f),
+                CreateFaceDecalMaterial(CreateEyeTexture(false), eyeColor, Mathf.Clamp(faceEmissionMax.Value, 0.5f, 16.0f)),
                 root.layer);
             Renderer rightEye = EnsurePrimitiveRenderer(
                 faceRoot,
                 RightEyeVisualName,
                 PrimitiveType.Quad,
-                new Vector3(radius * 0.32f, radius * 0.17f, faceZ),
+                new Vector3(radius * 0.34f, radius * 0.18f, faceZ),
                 Quaternion.identity,
-                new Vector3(radius * 0.58f, radius * 0.23f, 1.0f),
-                CreateFaceDecalMaterial(CreateEyeTexture(true), new Color(0.66f, 1.0f, 0.05f, 1.0f), Mathf.Clamp(faceGlowIntensity.Value, 1.0f, 12.0f)),
+                new Vector3(radius * 0.66f * faceVisualScale, radius * 0.28f * faceVisualScale, 1.0f),
+                CreateFaceDecalMaterial(CreateEyeTexture(true), eyeColor, Mathf.Clamp(faceEmissionMax.Value, 0.5f, 16.0f)),
                 root.layer);
             Renderer grin = EnsurePrimitiveRenderer(
                 faceRoot,
                 GrinVisualName,
                 PrimitiveType.Quad,
-                new Vector3(0.0f, -radius * 0.22f, faceZ + 0.006f),
+                new Vector3(0.0f, -radius * 0.23f, faceZ + 0.006f),
                 Quaternion.identity,
-                new Vector3(radius * 1.15f, radius * 0.34f, 1.0f),
-                CreateFaceDecalMaterial(CreateGrinTexture(), new Color(0.62f, 1.0f, 0.02f, 1.0f), Mathf.Clamp(faceGlowIntensity.Value * 0.85f, 1.0f, 12.0f)),
+                new Vector3(radius * 1.38f * faceVisualScale, radius * 0.42f * faceVisualScale, 1.0f),
+                CreateFaceDecalMaterial(CreateGrinTexture(), mouthColor, Mathf.Clamp(faceEmissionMax.Value * 0.92f, 0.5f, 16.0f)),
                 root.layer);
+
+            Renderer[] teeth = EnsureTeethRenderers(faceRoot, radius, faceZ + 0.012f, faceVisualScale, mouthColor, root.layer);
 
             Renderer highlightLarge = EnsurePrimitiveRenderer(
                 faceRoot,
@@ -774,14 +913,18 @@ namespace RepoSuperBallEnemy
                 CreateHighlightMaterial(),
                 root.layer);
 
-            SetRendererEnabled(leftEye, faceEnabled);
-            SetRendererEnabled(rightEye, faceEnabled);
-            SetRendererEnabled(grin, faceEnabled);
+            SetRendererEnabled(leftEye, false);
+            SetRendererEnabled(rightEye, false);
+            SetRendererEnabled(grin, false);
+            for (int i = 0; i < teeth.Length; i++)
+            {
+                SetRendererEnabled(teeth[i], false);
+            }
             SetRendererEnabled(highlightLarge, highlightsEnabled);
             SetRendererEnabled(highlightSmall, highlightsEnabled);
 
             Light faceLight = EnsureFaceLight(faceRoot, diameter);
-            faceLight.enabled = faceEnabled;
+            faceLight.enabled = false;
 
             SuperBallConceptVisuals visuals = root.GetComponent<SuperBallConceptVisuals>();
             if (visuals == null)
@@ -792,20 +935,53 @@ namespace RepoSuperBallEnemy
             visuals.Configure(
                 faceRoot,
                 new[] { leftEye, rightEye, grin },
+                teeth,
                 new[] { highlightLarge, highlightSmall },
                 crackRenderer,
                 innerCoreRenderer,
                 faceLight,
-                faceEnabled,
+                faceVisibleEnabled,
                 cracksEnabled,
                 highlightsEnabled,
-                Mathf.Clamp(faceGlowIntensity.Value, 1.0f, 12.0f),
+                Mathf.Clamp(faceAppearAtChargeProgress.Value, 0.0f, 0.95f),
+                Mathf.Clamp(faceEmissionMin.Value, 0.1f, 8.0f),
+                Mathf.Clamp(faceEmissionMax.Value, 0.5f, 16.0f),
+                faceTeethEnabled.Value,
+                Mathf.Clamp(faceMaxAlpha.Value, 0.05f, 1.0f),
+                eyeColor,
+                mouthColor,
                 Mathf.Clamp(crackGlowIntensity.Value, 0.5f, 12.0f),
                 Mathf.Clamp(crackLayerAlpha.Value, 0.10f, 1.0f),
-                Mathf.Clamp(innerCoreAlpha.Value, 0.05f, 0.65f));
+                Mathf.Clamp(innerCoreAlpha.Value, 0.05f, 0.65f),
+                Mathf.Clamp(innerGlowAlpha.Value, 0.05f, 0.55f));
 
-            Log.LogInfo($"Concept visual setup: faceEnabled={faceEnabled}, cracksEnabled={cracksEnabled}, highlightsEnabled={highlightsEnabled}, faceRoot='{GetHierarchyPath(faceRoot, root.transform)}', crackShell='{GetObjectName(crackRenderer)}', innerCore='{GetObjectName(innerCoreRenderer)}', faceGlow={Mathf.Clamp(faceGlowIntensity.Value, 1.0f, 12.0f):0.00}, crackGlow={Mathf.Clamp(crackGlowIntensity.Value, 0.5f, 12.0f):0.00}.");
+            Log.LogInfo($"Concept visual setup: faceEnabled={faceVisibleEnabled}, eyesEnabled={leftEye != null && rightEye != null}, mouthEnabled={grin != null}, teethEnabled={faceTeethEnabled.Value}, toothCount={teeth.Length}, cracksEnabled={cracksEnabled}, highlightsEnabled={highlightsEnabled}, faceRoot='{GetHierarchyPath(faceRoot, root.transform)}', crackShell='{GetObjectName(crackRenderer)}', innerCore='{GetObjectName(innerCoreRenderer)}', faceAppearAt={Mathf.Clamp(faceAppearAtChargeProgress.Value, 0.0f, 0.95f):0.00}, faceEmission={Mathf.Clamp(faceEmissionMin.Value, 0.1f, 8.0f):0.00}-{Mathf.Clamp(faceEmissionMax.Value, 0.5f, 16.0f):0.00}, faceMaxAlpha={Mathf.Clamp(faceMaxAlpha.Value, 0.05f, 1.0f):0.00}, eyeColor={FormatColor(eyeColor)}, mouthColor={FormatColor(mouthColor)}, crackGlow={Mathf.Clamp(crackGlowIntensity.Value, 0.5f, 12.0f):0.00}.");
             return visuals;
+        }
+
+        private Renderer[] EnsureTeethRenderers(Transform faceRoot, float radius, float faceZ, float faceVisualScale, Color toothColor, int layer)
+        {
+            const int toothCount = 7;
+            Renderer[] teeth = new Renderer[toothCount];
+            for (int i = 0; i < toothCount; i++)
+            {
+                float t = toothCount == 1 ? 0.5f : i / (float)(toothCount - 1);
+                float x = Mathf.Lerp(-0.42f, 0.42f, t) * radius * faceVisualScale;
+                float curve = 1.0f - Mathf.Pow(Mathf.Abs(t - 0.5f) * 2.0f, 1.75f);
+                float y = (-0.19f - curve * 0.12f) * radius * faceVisualScale;
+                float height = Mathf.Lerp(0.13f, 0.22f, curve) * radius * faceVisualScale;
+                teeth[i] = EnsurePrimitiveRenderer(
+                    faceRoot,
+                    "Tooth" + i,
+                    PrimitiveType.Quad,
+                    new Vector3(x, y, faceZ + i * 0.0008f),
+                    Quaternion.Euler(0.0f, 0.0f, Mathf.Lerp(10.0f, -10.0f, t)),
+                    new Vector3(radius * 0.105f * faceVisualScale, height, 1.0f),
+                    CreateFaceDecalMaterial(CreateToothTexture(), toothColor, Mathf.Clamp(faceEmissionMax.Value * 1.05f, 0.5f, 16.0f)),
+                    layer);
+            }
+
+            return teeth;
         }
 
         private Renderer EnsurePrimitiveRenderer(Transform parent, string name, PrimitiveType primitiveType, Vector3 localPosition, Quaternion localRotation, Vector3 localScale, Material material, int layer)
@@ -871,7 +1047,7 @@ namespace RepoSuperBallEnemy
             light.type = LightType.Point;
             light.color = new Color(0.58f, 1.0f, 0.02f, 1.0f);
             light.range = Mathf.Clamp(diameter * 2.4f, 0.75f, 2.4f);
-            light.intensity = Mathf.Clamp(faceGlowIntensity.Value * 0.28f, 0.15f, 2.2f);
+            light.intensity = Mathf.Clamp(faceEmissionMax.Value * 0.28f, 0.15f, 2.2f);
             return light;
         }
 
@@ -996,6 +1172,39 @@ namespace RepoSuperBallEnemy
             return CreateTexture("SuperBallGrinTexture", width, height, pixels);
         }
 
+        private static Texture2D CreateToothTexture()
+        {
+            const int width = 32;
+            const int height = 48;
+            Color[] pixels = CreateClearPixels(width, height);
+            Vector2[] tooth =
+            {
+                new Vector2(0.16f, 0.88f),
+                new Vector2(0.84f, 0.88f),
+                new Vector2(0.50f, 0.10f)
+            };
+
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    Vector2 p = new Vector2((x + 0.5f) / width, (y + 0.5f) / height);
+                    float edge = DistanceToPolygonEdges(p, tooth);
+                    if (PointInPolygon(p, tooth))
+                    {
+                        float core = Mathf.Clamp01(1.0f - edge * 5.5f);
+                        BlendPixel(pixels, width, x, y, Color.Lerp(new Color(0.72f, 1.0f, 0.12f, 0.82f), new Color(1.0f, 1.0f, 0.76f, 1.0f), core));
+                    }
+                    else if (edge < 0.08f)
+                    {
+                        BlendPixel(pixels, width, x, y, new Color(0.62f, 1.0f, 0.08f, Mathf.Clamp01(1.0f - edge / 0.08f) * 0.28f));
+                    }
+                }
+            }
+
+            return CreateTexture("SuperBallToothTexture", width, height, pixels);
+        }
+
         private static Texture2D CreateHighlightTexture()
         {
             const int width = 96;
@@ -1074,8 +1283,8 @@ namespace RepoSuperBallEnemy
                     float v = (y + 0.5f) / height;
                     float noise = Mathf.PerlinNoise(u * 5.2f + 11.0f, v * 5.2f + 27.0f);
                     float veins = Mathf.PerlinNoise(u * 16.0f + 6.0f, v * 16.0f + 19.0f);
-                    float alpha = Mathf.Clamp01(0.10f + noise * 0.22f + Mathf.Pow(veins, 5.0f) * 0.45f);
-                    Color color = Color.Lerp(new Color(0.0f, 0.12f, 0.02f, alpha), new Color(0.04f, 0.90f, 0.04f, alpha), Mathf.Pow(veins, 4.0f));
+                    float alpha = Mathf.Clamp01(0.46f + noise * 0.20f + Mathf.Pow(veins, 5.0f) * 0.18f);
+                    Color color = Color.Lerp(new Color(0.0f, 0.025f, 0.012f, alpha), new Color(0.0f, 0.30f, 0.075f, alpha), Mathf.Pow(veins, 4.0f));
                     BlendPixel(pixels, width, x, y, color);
                 }
             }
@@ -1229,17 +1438,54 @@ namespace RepoSuperBallEnemy
 
         private Color GetSuperBallBodyColor()
         {
-            return new Color(0.10f, 1.0f, 0.10f, GetSuperBallAlpha());
+            return new Color(0.02f, 0.88f, 0.16f, GetSuperBallAlpha());
         }
 
         private Color GetSuperBallEmissionColor()
         {
-            return new Color(0.02f, 1.0f, 0.05f, 1.0f);
+            return new Color(0.0f, 0.72f, 0.10f, 1.0f);
         }
 
         private float GetSuperBallAlpha()
         {
-            return Mathf.Clamp(superBallAlpha.Value, 0.30f, 0.75f);
+            return Mathf.Clamp(superBallAlpha.Value, 0.38f, 0.82f);
+        }
+
+        private Color GetInnerCoreColor()
+        {
+            Color fallback = new Color(0.0f, 0.055f, 0.020f, Mathf.Clamp(innerCoreAlpha.Value, 0.10f, 0.85f));
+            return ParseHtmlColor(innerCoreColor == null ? null : innerCoreColor.Value, fallback);
+        }
+
+        private Color GetFaceEyeColor()
+        {
+            return ParseHtmlColor(faceEyeColor == null ? null : faceEyeColor.Value, new Color(0.88f, 1.0f, 0.10f, 1.0f));
+        }
+
+        private Color GetFaceMouthColor()
+        {
+            return ParseHtmlColor(faceMouthColor == null ? null : faceMouthColor.Value, new Color(0.95f, 1.0f, 0.38f, 1.0f));
+        }
+
+        private static Color ParseHtmlColor(string value, Color fallback)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return fallback;
+            }
+
+            string text = value.Trim();
+            if (text[0] != '#')
+            {
+                text = "#" + text;
+            }
+
+            if (ColorUtility.TryParseHtmlString(text, out Color color))
+            {
+                return color;
+            }
+
+            return fallback;
         }
 
         private string GetMaterialTransparencyMode()
@@ -2109,14 +2355,15 @@ namespace RepoSuperBallEnemy
             renderer.material = CreateSuperBallMaterial();
 
             SphereCollider sphereCollider = EnsureSphereCollider(sphere, diameter, "F8 spawn visibility");
-            Rigidbody rigidbody = EnsureSuperBallRigidbody(sphere);
-            Renderer auraRenderer = EnsureAuraVisual(sphereTransform, diameter);
+            Rigidbody rigidbody = EnsureSuperBallRigidbody(root, sphere);
             SuperBallConceptVisuals conceptVisuals = EnsureConceptVisuals(root, sphereTransform, diameter);
+            Light pointLight = EnsurePointLight(sphereTransform, diameter);
+            SuperBallAuraField auraField = EnsureAuraVisual(sphereTransform, pointLight, diameter, out Renderer auraRenderer);
+            SuperBallLightningArcs lightning = EnsureLightningVisual(sphereTransform);
             ColliderCleanupResult colliderCleanup = DisableInheritedColliders(root, sphereCollider, "F8 spawn visibility");
 
-            Light pointLight = EnsurePointLight(sphereTransform, diameter);
             EnsureVisualMotion(root, sphereTransform, safeLocalCenter, diameter);
-            SuperBallBehavior behavior = EnsureSuperBallBehavior(root, sphereTransform, auraRenderer == null ? null : auraRenderer.transform, auraRenderer, pointLight, sphereCollider, rigidbody, diameter);
+            SuperBallBehavior behavior = EnsureSuperBallBehavior(root, sphereTransform, auraRenderer == null ? null : auraRenderer.transform, auraRenderer, auraField, lightning, pointLight, sphereCollider, rigidbody, diameter);
             RemoveDuplicateOwnedSpheres(root, sphereTransform, "F8 spawn visibility");
 
             bool fallbackCreated = false;
@@ -2250,22 +2497,41 @@ namespace RepoSuperBallEnemy
             return sphereCollider;
         }
 
-        private Rigidbody EnsureSuperBallRigidbody(GameObject sphere)
+        private Rigidbody EnsureSuperBallRigidbody(GameObject root, GameObject sphere)
         {
-            Rigidbody rigidbody = sphere.GetComponent<Rigidbody>();
+            if (root == null)
+            {
+                return null;
+            }
+
+            if (sphere != null)
+            {
+                Rigidbody childRigidbody = sphere.GetComponent<Rigidbody>();
+                if (childRigidbody != null && childRigidbody.gameObject != root)
+                {
+                    childRigidbody.detectCollisions = false;
+                    childRigidbody.isKinematic = true;
+                    UnityEngine.Object.Destroy(childRigidbody);
+                }
+            }
+
+            Rigidbody rigidbody = root.GetComponent<Rigidbody>();
             if (rigidbody == null)
             {
-                rigidbody = sphere.AddComponent<Rigidbody>();
+                rigidbody = root.AddComponent<Rigidbody>();
             }
 
             rigidbody.isKinematic = true;
             rigidbody.useGravity = false;
-            rigidbody.constraints = RigidbodyConstraints.None;
+            rigidbody.detectCollisions = true;
+            rigidbody.interpolation = RigidbodyInterpolation.Interpolate;
+            rigidbody.constraints = RigidbodyConstraints.FreezeRotation;
             rigidbody.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
+            Log.LogInfo($"Super Ball rigidbody setup: object='{root.name}', isKinematic={rigidbody.isKinematic}, useGravity={rigidbody.useGravity}, detectCollisions={rigidbody.detectCollisions}, constraints={rigidbody.constraints}, collisionDetection={rigidbody.collisionDetectionMode}.");
             return rigidbody;
         }
 
-        private SuperBallBehavior EnsureSuperBallBehavior(GameObject root, Transform visualRoot, Transform auraRoot, Renderer auraRenderer, Light auraLight, Collider contactCollider, Rigidbody rigidbody, float diameter)
+        private SuperBallBehavior EnsureSuperBallBehavior(GameObject root, Transform visualRoot, Transform auraRoot, Renderer auraRenderer, SuperBallAuraField auraField, SuperBallLightningArcs lightning, Light auraLight, Collider contactCollider, Rigidbody rigidbody, float diameter)
         {
             SuperBallBehavior behavior = visualRoot.GetComponent<SuperBallBehavior>();
             if (behavior == null && enableCustomSuperBallBehavior.Value)
@@ -2284,6 +2550,8 @@ namespace RepoSuperBallEnemy
                 visualRoot,
                 auraRoot,
                 auraRenderer,
+                auraField,
+                lightning,
                 auraLight,
                 contactCollider,
                 rigidbody,
@@ -2293,10 +2561,11 @@ namespace RepoSuperBallEnemy
                 Mathf.Clamp(chargeWarningSeconds.Value, 1.0f, 8.0f),
                 Mathf.Clamp(chargeCooldownSeconds.Value, 1.0f, 20.0f),
                 Mathf.Clamp(roamSpeed.Value, 0.4f, 4.0f),
-                Mathf.Clamp(idleBounceAmplitude.Value, 0.0f, 0.25f),
-                Mathf.Clamp(idleBounceFrequency.Value, 0.4f, 5.0f),
-                Mathf.Clamp(chargeBounceAmplitudeMin.Value, 0.0f, 0.3f),
-                Mathf.Clamp(chargeBounceAmplitudeMax.Value, 0.02f, 0.55f),
+                Mathf.Clamp(roamBounceHeight.Value, 0.02f, 0.45f),
+                Mathf.Clamp(roamBounceFrequency.Value, 0.3f, 5.0f),
+                Mathf.Clamp(chargeBounceHeight.Value, 0.04f, 0.65f),
+                Mathf.Clamp(chargeBounceFrequency.Value, 0.5f, 12.0f),
+                Mathf.Clamp(elasticSquashAmount.Value, 0.04f, 0.24f),
                 Mathf.Clamp(chargeSpinSpeedMin.Value, 0.0f, 900.0f),
                 Mathf.Clamp(chargeSpinSpeedMax.Value, 180.0f, 2400.0f),
                 Mathf.Clamp(chargeSpeed.Value, 2.0f, 20.0f),
@@ -2304,8 +2573,16 @@ namespace RepoSuperBallEnemy
                 Mathf.Clamp(recoveryDuration.Value, 0.25f, 5.0f),
                 Mathf.Clamp(chargeAuraScale.Value, 1.0f, 3.0f),
                 auraEnabled.Value,
-                Mathf.Clamp(auraAlpha.Value, 0.02f, 0.45f),
-                Mathf.Clamp(auraScaleMultiplier.Value, 1.05f, 2.5f),
+                Mathf.Clamp(auraIdleAlpha.Value, 0.0f, 0.18f),
+                Mathf.Clamp(auraChargeAlpha.Value, 0.02f, 0.45f),
+                Mathf.Clamp(auraPulseSpeedMin.Value, 0.1f, 5.0f),
+                Mathf.Clamp(auraPulseSpeedMax.Value, 0.5f, 16.0f),
+                Mathf.Clamp(auraMaxScale.Value, 1.1f, 3.0f),
+                Mathf.Clamp(chargeScaleMultiplier.Value, 1.0f, 1.8f),
+                Mathf.Clamp(chargeScaleCurvePower.Value, 0.3f, 4.0f),
+                Mathf.Clamp(faceAppearAtChargeProgress.Value, 0.0f, 0.95f),
+                lightningEnabled.Value,
+                Mathf.Clamp(lightningDuringChargeProgress.Value, 0.0f, 1.0f),
                 diameter);
             return behavior;
         }
