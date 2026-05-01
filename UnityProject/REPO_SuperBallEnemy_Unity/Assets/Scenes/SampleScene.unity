@@ -2644,7 +2644,7 @@ MonoBehaviour:
   Gamma: 0.8
   EdgeDefinition: 1.55
   FeatureThreshold: 0.16
-  FaceScale: 1.6
+  FaceScale: 1.4
   FaceWidthScale: 1.15
   FaceHeightScale: 1.06
   ProjectionEuler: {x: 0, y: 0, z: 0}

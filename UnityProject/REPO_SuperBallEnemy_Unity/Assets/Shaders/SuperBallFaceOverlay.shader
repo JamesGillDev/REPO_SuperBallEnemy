@@ -18,7 +18,7 @@ Shader "REPO/SuperBallFaceOverlay"
         _FeatureThreshold ("Feature Threshold", Range(0.0, 1.0)) = 0.16
         _EyeBoost ("Eye Boost", Range(0.0, 3.0)) = 0.0
         _GrinBoost ("Grin Boost", Range(0.0, 3.0)) = 0.0
-        _FaceScale ("Face Scale", Range(0.2, 3.0)) = 1.60
+        _FaceScale ("Face Scale", Range(0.2, 1.4)) = 1.40
         _FaceWidthScale ("Face Width Scale", Range(0.2, 3.0)) = 1.15
         _FaceHeightScale ("Face Height Scale", Range(0.2, 3.0)) = 1.06
         _FaceVerticalOffset ("Face Vertical Offset", Range(-0.7, 0.7)) = 0.04

@@ -16,6 +16,8 @@ using UnityEngine.SceneManagement;
 [RequireComponent(typeof(MeshRenderer))]
 public sealed class SuperBallFaceOverlay : MonoBehaviour
 {
+    private const float LockedFaceScale = 1.40f;
+
     private const string FaceObjectName = "SuperBall_Face";
     private const string MainTexName = "_MainTex";
     private const int FaceSortingOrder = 24;
@@ -77,7 +79,7 @@ public sealed class SuperBallFaceOverlay : MonoBehaviour
     [Space(4)]
     [Header("Placement / Projection")]
     [Tooltip("Scales the projected face footprint across the inner sphere.")]
-    [Range(0.2f, 3f)] public float FaceScale = 1.60f;
+    [Range(0.2f, LockedFaceScale)] public float FaceScale = LockedFaceScale;
     [Tooltip("Additional horizontal footprint scale. Keeps the grin wide without forcing the whole texture taller.")]
     [Range(0.2f, 3f)] public float FaceWidthScale = 1.15f;
     [Tooltip("Additional vertical footprint scale. Compensates for transparent texture padding while preserving the curved projection.")]
@@ -308,6 +310,7 @@ public sealed class SuperBallFaceOverlay : MonoBehaviour
     {
         CacheComponents();
         EnsureSphereMesh();
+        FaceScale = Mathf.Min(FaceScale, LockedFaceScale);
         targetChargeProgress = Mathf.Clamp01(targetChargeProgress);
         if (!Application.isPlaying)
         {
@@ -520,7 +523,7 @@ public sealed class SuperBallFaceOverlay : MonoBehaviour
         block.SetFloat(FlickerAmountId, Mathf.Clamp01(pulseAmount));
         block.SetFloat(EyeBoostId, Mathf.Max(0f, eyeBoost));
         block.SetFloat(GrinBoostId, Mathf.Max(0f, grinBoost));
-        block.SetFloat(FaceScaleId, FaceScale);
+        block.SetFloat(FaceScaleId, Mathf.Min(FaceScale, LockedFaceScale));
         block.SetFloat(FaceWidthScaleId, FaceWidthScale);
         block.SetFloat(FaceHeightScaleId, FaceHeightScale);
         block.SetFloat(FaceVerticalOffsetId, FaceVerticalOffset);
@@ -571,7 +574,7 @@ public sealed class SuperBallFaceOverlay : MonoBehaviour
         material.SetFloat(GammaId, Mathf.Max(0.01f, Gamma));
         material.SetFloat(EdgeDefinitionId, Mathf.Max(0f, EdgeDefinition));
         material.SetFloat(FeatureThresholdId, Mathf.Clamp01(FeatureThreshold));
-        material.SetFloat(FaceScaleId, FaceScale);
+        material.SetFloat(FaceScaleId, Mathf.Min(FaceScale, LockedFaceScale));
         material.SetFloat(FaceWidthScaleId, FaceWidthScale);
         material.SetFloat(FaceHeightScaleId, FaceHeightScale);
         material.SetFloat(FaceVerticalOffsetId, FaceVerticalOffset);
@@ -697,7 +700,7 @@ public sealed class SuperBallFaceOverlay : MonoBehaviour
         controller.Gamma = 0.80f;
         controller.EdgeDefinition = 1.55f;
         controller.FeatureThreshold = 0.16f;
-        controller.FaceScale = 1.60f;
+        controller.FaceScale = LockedFaceScale;
         controller.FaceWidthScale = 1.15f;
         controller.FaceHeightScale = 1.06f;
         controller.ProjectionEuler = Vector3.zero;
@@ -952,7 +955,7 @@ public sealed class SuperBallFaceOverlay : MonoBehaviour
         material.SetFloat("_Gamma", 0.80f);
         material.SetFloat("_EdgeDefinition", 1.55f);
         material.SetFloat("_FeatureThreshold", 0.16f);
-        material.SetFloat("_FaceScale", 1.60f);
+        material.SetFloat("_FaceScale", LockedFaceScale);
         material.SetFloat("_FaceWidthScale", 1.15f);
         material.SetFloat("_FaceHeightScale", 1.06f);
         material.SetFloat("_FaceVerticalOffset", 0.04f);
