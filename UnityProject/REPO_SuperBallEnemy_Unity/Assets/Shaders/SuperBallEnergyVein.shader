@@ -2,14 +2,14 @@ Shader "REPO/SuperBallEnergyVein"
 {
     Properties
     {
-        _Color ("Vein Color", Color) = (0.50, 1.0, 0.05, 1.0)
-        _Visibility ("Visibility", Range(0.0, 3.0)) = 0.18
-        _EmissionIntensity ("Emission Intensity", Range(0.0, 8.0)) = 0.9
+        _Color ("Vein Color", Color) = (0.48, 1.0, 0.06, 1.0)
+        _Visibility ("Visibility", Range(0.0, 3.0)) = 0.08
+        _EmissionIntensity ("Emission Intensity", Range(0.0, 8.0)) = 0.92
         _Pulse ("Pulse", Range(0.0, 1.0)) = 0.0
-        _Alpha ("Alpha", Range(0.0, 1.0)) = 0.18
-        _ScrollSpeed ("Scroll Speed", Range(-8.0, 8.0)) = 0.35
-        _NoiseStrength ("Noise Strength", Range(0.0, 1.0)) = 0.22
-        _FlickerAmount ("Flicker Amount", Range(0.0, 1.0)) = 0.18
+        _Alpha ("Alpha", Range(0.0, 1.0)) = 0.10
+        _ScrollSpeed ("Pulse Speed", Range(-8.0, 8.0)) = 0.18
+        _NoiseStrength ("Shimmer Strength", Range(0.0, 1.0)) = 0.03
+        _FlickerAmount ("Flicker Amount", Range(0.0, 1.0)) = 0.06
     }
 
     SubShader
@@ -72,12 +72,10 @@ Shader "REPO/SuperBallEnergyVein"
 
             fixed4 frag(v2f i) : SV_Target
             {
-                half flow = i.uv.x * 8.0h + _Time.y * _ScrollSpeed + _Pulse * 6.28318h;
-                half slowWave = sin(flow) * 0.5h + 0.5h;
-                half fineWave = sin(flow * 2.37h + 1.91h) * 0.5h + 0.5h;
-                half shimmer = lerp(1.0h, 0.78h + slowWave * 0.34h + fineWave * 0.18h, saturate(_NoiseStrength));
-                half flicker = 1.0h + (slowWave - 0.5h) * _FlickerAmount;
-                half visibility = saturate(_Visibility) * shimmer * flicker;
+                half pulse = sin(_Time.y * _ScrollSpeed + _Pulse * 6.28318h) * 0.5h + 0.5h;
+                half shimmer = lerp(1.0h, 0.94h + pulse * 0.12h, saturate(_NoiseStrength));
+                half flicker = 1.0h + (pulse - 0.5h) * _FlickerAmount;
+                half visibility = max(0.0h, _Visibility) * shimmer * flicker;
                 half alpha = saturate(i.color.a * _Alpha * visibility);
                 fixed3 glow = i.color.rgb * _EmissionIntensity * visibility;
                 return fixed4(glow, alpha);

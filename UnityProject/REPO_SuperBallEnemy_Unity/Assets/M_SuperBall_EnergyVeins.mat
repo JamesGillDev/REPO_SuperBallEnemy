@@ -26,12 +26,12 @@ Material:
     m_Ints: []
     m_Floats:
     - _Alpha: 1
-    - _EmissionIntensity: 1.12
-    - _FlickerAmount: 0.08
-    - _NoiseStrength: 0.15
+    - _EmissionIntensity: 0.92
+    - _FlickerAmount: 0.06
+    - _NoiseStrength: 0.03
     - _Pulse: 0
-    - _ScrollSpeed: 0.52
-    - _Visibility: 0.34
+    - _ScrollSpeed: 0.18
+    - _Visibility: 0.08
     m_Colors:
-    - _Color: {r: 0.52, g: 1, b: 0.05, a: 1}
+    - _Color: {r: 0.48, g: 1, b: 0.06, a: 1}
   m_BuildTextureStacks: []

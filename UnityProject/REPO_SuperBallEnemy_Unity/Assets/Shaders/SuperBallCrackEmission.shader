@@ -2,9 +2,9 @@ Shader "REPO/SuperBallCrackEmission"
 {
     Properties
     {
-        _Color ("Crack Color", Color) = (0.78, 1.0, 0.08, 1.0)
-        _EmissionIntensity ("Emission Intensity", Range(0.0, 12.0)) = 3.4
-        _Visibility ("Visibility", Range(0.0, 3.0)) = 1.0
+        _Color ("Crack Color", Color) = (0.48, 1.0, 0.06, 1.0)
+        _EmissionIntensity ("Emission Intensity", Range(0.0, 12.0)) = 1.35
+        _Visibility ("Visibility", Range(0.0, 3.0)) = 0.18
     }
 
     SubShader
@@ -59,8 +59,9 @@ Shader "REPO/SuperBallCrackEmission"
 
             fixed4 frag(v2f i) : SV_Target
             {
-                half alpha = saturate(i.color.a * _Visibility);
-                fixed3 glow = i.color.rgb * _EmissionIntensity * _Visibility;
+                half visibility = max(0.0h, _Visibility);
+                half alpha = saturate(i.color.a * visibility);
+                fixed3 glow = i.color.rgb * _EmissionIntensity * visibility;
                 return fixed4(glow, alpha);
             }
             ENDCG

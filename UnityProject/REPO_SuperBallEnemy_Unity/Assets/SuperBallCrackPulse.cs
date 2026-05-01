@@ -4,35 +4,48 @@ using UnityEngine;
 [ExecuteAlways]
 public sealed class SuperBallCrackPulse : MonoBehaviour
 {
-    [Range(0f, 2f)] public float idleVisibility = 0.30f;
-    [Range(0f, 2f)] public float chargeVisibility = 1.00f;
-    [Range(0f, 3f)] public float launchFlashVisibility = 1.35f;
-    [Min(0f)] public float idleEmission = 0.45f;
-    [Min(0f)] public float chargeEmission = 1.00f;
-    [Min(0f)] public float flashEmission = 1.60f;
-    [Min(0.01f)] public float idleFlickerSpeed = 0.95f;
-    [Min(0.01f)] public float chargeFlickerSpeed = 7.25f;
+    [Range(0f, 2f)] public float idleVisibility = 0.18f;
+    [Range(0f, 2f)] public float chargeVisibility = 1.18f;
+    [Range(0f, 3f)] public float launchFlashVisibility = 1.75f;
+    [Min(0f)] public float idleEmission = 0.78f;
+    [Min(0f)] public float chargeEmission = 2.05f;
+    [Min(0f)] public float flashEmission = 3.35f;
+    [Min(0.01f)] public float idleFlickerSpeed = 0.75f;
+    [Min(0.01f)] public float chargeFlickerSpeed = 4.80f;
     [Min(0.01f)] public float flashDecaySpeed = 5.5f;
+    [Min(0.01f)] public float stateTransitionSpeed = 4.8f;
 
     private static readonly int VisibilityId = Shader.PropertyToID("_Visibility");
     private static readonly int EmissionIntensityId = Shader.PropertyToID("_EmissionIntensity");
 
     private readonly List<LineRenderer> lines = new List<LineRenderer>();
     private MaterialPropertyBlock block;
-    private float chargeProgress;
+    private float targetChargeProgress;
+    private float currentChargeProgress;
     private float flashAmount;
-    private bool charging;
 
     public void SetIdle()
     {
-        charging = false;
-        chargeProgress = 0f;
+        targetChargeProgress = 0f;
+        flashAmount = 0f;
+        if (!Application.isPlaying)
+        {
+            currentChargeProgress = 0f;
+        }
+    }
+
+    public void SetRecovery()
+    {
+        SetIdle();
     }
 
     public void SetCharge(float progress)
     {
-        charging = true;
-        chargeProgress = Mathf.Clamp01(progress);
+        targetChargeProgress = Mathf.Clamp01(progress);
+        if (!Application.isPlaying)
+        {
+            currentChargeProgress = targetChargeProgress;
+        }
     }
 
     public void Flash(float intensity)
@@ -44,6 +57,7 @@ public sealed class SuperBallCrackPulse : MonoBehaviour
     {
         EnsureBlock();
         RebuildLineCache();
+        currentChargeProgress = targetChargeProgress;
         ApplyPulse();
     }
 
@@ -61,6 +75,10 @@ public sealed class SuperBallCrackPulse : MonoBehaviour
         }
 
         float deltaTime = Application.isPlaying ? Time.deltaTime : 1f / 30f;
+        currentChargeProgress = Mathf.MoveTowards(
+            currentChargeProgress,
+            targetChargeProgress,
+            deltaTime * Mathf.Max(stateTransitionSpeed, 0.01f));
         flashAmount = Mathf.MoveTowards(flashAmount, 0f, deltaTime * flashDecaySpeed);
         ApplyPulse();
     }
@@ -76,15 +94,12 @@ public sealed class SuperBallCrackPulse : MonoBehaviour
         EnsureBlock();
 
         float time = Application.isPlaying ? Time.time : (float)UnityEditorSafeTime();
-        float flickerSpeed = charging ? chargeFlickerSpeed : idleFlickerSpeed;
-        float flicker = 0.84f + Mathf.PerlinNoise(time * flickerSpeed, 0.37f) * 0.28f;
-        float visibility = charging
-            ? Mathf.Lerp(idleVisibility, chargeVisibility, chargeProgress) * flicker
-            : Mathf.Max(0.08f, idleVisibility * flicker);
-
-        float emission = charging
-            ? Mathf.Lerp(idleEmission, chargeEmission, chargeProgress) * flicker
-            : idleEmission * flicker;
+        float threat = Mathf.Clamp01(currentChargeProgress);
+        float pressure = SmoothRange(0.34f, 0.92f, threat);
+        float flickerSpeed = Mathf.Lerp(idleFlickerSpeed, chargeFlickerSpeed, pressure);
+        float flicker = 0.90f + Mathf.PerlinNoise(time * flickerSpeed, 0.37f) * 0.18f;
+        float visibility = Mathf.Max(0.02f, Mathf.Lerp(idleVisibility, chargeVisibility, pressure) * flicker);
+        float emission = Mathf.Lerp(idleEmission, chargeEmission, pressure) * flicker;
 
         if (flashAmount > 0f)
         {
@@ -102,7 +117,7 @@ public sealed class SuperBallCrackPulse : MonoBehaviour
             }
 
             float linePhase = Hash01(line.name) * 6.28318f;
-            float lineFlicker = 0.90f + Mathf.Sin(time * (flickerSpeed * 0.7f) + linePhase) * 0.10f;
+            float lineFlicker = 0.94f + Mathf.Sin(time * (flickerSpeed * 0.55f) + linePhase) * 0.06f;
 
             line.GetPropertyBlock(block);
             block.SetFloat(VisibilityId, visibility * lineFlicker);
@@ -132,6 +147,19 @@ public sealed class SuperBallCrackPulse : MonoBehaviour
 
             return (hash & 0x00FFFFFF) / 16777215f;
         }
+    }
+
+    private static float SmoothRange(float start, float end, float value)
+    {
+        if (Mathf.Approximately(start, end))
+        {
+            return value >= end ? 1f : 0f;
+        }
+
+        float min = Mathf.Min(start, end);
+        float max = Mathf.Max(start, end);
+        float t = Mathf.InverseLerp(min, max, Mathf.Clamp01(value));
+        return t * t * (3f - 2f * t);
     }
 
     private static double UnityEditorSafeTime()

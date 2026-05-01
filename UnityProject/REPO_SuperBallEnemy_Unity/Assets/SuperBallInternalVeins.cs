@@ -13,8 +13,8 @@ using UnityEngine.SceneManagement;
 public sealed class SuperBallInternalVeins : MonoBehaviour
 {
     [Header("Distribution")]
-    [Range(1, 64)] public int VeinCount = 24;
-    [Range(3, 32)] public int PointsPerVein = 10;
+    [Range(1, 64)] public int VeinCount = 32;
+    [Range(3, 32)] public int PointsPerVein = 5;
     public bool UseManualShellRadius = true;
     [Range(0.01f, 1.25f)] public float ManualShellRadius = 0.98f;
     public bool AutoDeriveSphereRadius = true;
@@ -22,32 +22,33 @@ public sealed class SuperBallInternalVeins : MonoBehaviour
     [Min(0.01f)] public float EffectiveShellRadius = 0.98f;
     [Min(0.01f)] public float EffectiveGenerationRadius = 0.965f;
     [Min(0f)] public float SurfaceInset = 0.015f;
-    [Range(0f, 1f)] public float FrontHemisphereShare = 0.72f;
+    [Range(0f, 1f)] public float FrontHemisphereShare = 0.84f;
     [Min(0.01f)] public float MinArcLength = 0.16f;
     [Min(0.01f)] public float MaxArcLength = 0.38f;
-    [Range(0f, 0.35f)] public float CurveNoise = 0.07f;
-    [Range(0f, 1f)] public float BranchChance = 0.12f;
-    [Range(0.1f, 1f)] public float BranchLengthMultiplier = 0.30f;
+    [Range(0f, 0.35f)] public float CurveNoise = 0.065f;
+    [Range(0f, 1f)] public float BranchChance = 0.14f;
+    [Range(0.1f, 1f)] public float BranchLengthMultiplier = 0.34f;
     public int RandomSeed = 84017;
 
     [Header("Rendering")]
-    [Range(0f, 2f)] public float IdleVisibility = 0.34f;
-    [Range(0f, 2f)] public float ChargeVisibility = 1.15f;
-    [Range(0f, 3f)] public float LaunchFlashVisibility = 1.50f;
-    [Range(0f, 1f)] public float VeinAlphaMin = 0.10f;
-    [Range(0f, 1f)] public float VeinAlphaMax = 0.32f;
-    [Min(0f)] public float VeinEmissionMin = 0.85f;
-    [Min(0f)] public float VeinEmissionMax = 2.00f;
-    [Min(0f)] public float EmissionIntensity = 1.12f;
-    [Min(0.0005f)] public float MinThickness = 0.0020f;
-    [Min(0.0005f)] public float MaxThickness = 0.028f;
-    public Color VeinColor = new Color(0.52f, 1f, 0.05f, 1f);
-    [Min(0.01f)] public float IdlePulseSpeed = 0.55f;
-    [Min(0.01f)] public float ChargePulseSpeed = 3.60f;
-    [Min(0.01f)] public float FlashDecaySpeed = 4.40f;
-    [Range(-8f, 8f)] public float FlowSpeed = 0.52f;
-    [Range(0f, 1f)] public float NoiseStrength = 0.15f;
-    [Range(0f, 1f)] public float FlickerAmount = 0.08f;
+    [Range(0f, 2f)] public float IdleVisibility = 0.08f;
+    [Range(0f, 2f)] public float ChargeVisibility = 0.82f;
+    [Range(0f, 3f)] public float LaunchFlashVisibility = 1.18f;
+    [Range(0f, 1f)] public float VeinAlphaMin = 0.045f;
+    [Range(0f, 1f)] public float VeinAlphaMax = 0.18f;
+    [Min(0f)] public float VeinEmissionMin = 0.42f;
+    [Min(0f)] public float VeinEmissionMax = 1.30f;
+    [Min(0f)] public float EmissionIntensity = 0.92f;
+    [Min(0.0005f)] public float MinThickness = 0.0012f;
+    [Min(0.0005f)] public float MaxThickness = 0.0048f;
+    public Color VeinColor = new Color(0.48f, 1f, 0.06f, 1f);
+    [Min(0.01f)] public float IdlePulseSpeed = 0.28f;
+    [Min(0.01f)] public float ChargePulseSpeed = 2.40f;
+    [Min(0.01f)] public float FlashDecaySpeed = 5.20f;
+    [Min(0.01f)] public float StateTransitionSpeed = 4.8f;
+    [Range(-8f, 8f)] public float FlowSpeed = 0.18f;
+    [Range(0f, 1f)] public float NoiseStrength = 0.03f;
+    [Range(0f, 1f)] public float FlickerAmount = 0.06f;
 
     [Header("Debug Validation")]
     public bool DebugVisiblePlacement;
@@ -81,9 +82,9 @@ public sealed class SuperBallInternalVeins : MonoBehaviour
     private readonly List<LineRenderer> lines = new List<LineRenderer>();
     private MaterialPropertyBlock block;
     private Material fallbackMaterial;
-    private float chargeProgress;
+    private float targetChargeProgress;
+    private float currentChargeProgress;
     private float flashAmount;
-    private bool charging;
 
     [ContextMenu("Regenerate Internal Veins")]
     public void RegenerateInternalVeins()
@@ -114,7 +115,7 @@ public sealed class SuperBallInternalVeins : MonoBehaviour
             float alpha = RandomRange(random, VeinAlphaMin, VeinAlphaMax);
             float emission = RandomRange(random, VeinEmissionMin, VeinEmissionMax);
             Color color = RandomVeinColor(random);
-            Vector3[] points = BuildCurvedShellPath(centerNormal, generationRadius, arcLength, pointsPerVein, CurveNoise, random);
+            Vector3[] points = BuildAngularLightningPath(centerNormal, generationRadius, arcLength, pointsPerVein, CurveNoise, random);
 
             CreateVeinLine(
                 "SuperBall_EnergyVein_" + lineIndex.ToString("000"),
@@ -134,7 +135,7 @@ public sealed class SuperBallInternalVeins : MonoBehaviour
                 int startIndex = Mathf.Clamp(random.Next(1, points.Length - 1), 1, points.Length - 2);
                 Vector3 branchNormal = points[startIndex].normalized;
                 float branchLength = arcLength * BranchLengthMultiplier * RandomRange(random, 0.72f, 1.16f);
-                Vector3[] branch = BuildBranchPath(branchNormal, generationRadius, branchLength, branchPoints, CurveNoise * 0.8f, random);
+                Vector3[] branch = BuildLightningBranchPath(branchNormal, generationRadius, branchLength, branchPoints, CurveNoise * 0.7f, random);
 
                 CreateVeinLine(
                     "SuperBall_EnergyVein_Branch_" + lineIndex.ToString("000"),
@@ -166,14 +167,26 @@ public sealed class SuperBallInternalVeins : MonoBehaviour
 
     public void SetIdle()
     {
-        charging = false;
-        chargeProgress = 0f;
+        targetChargeProgress = 0f;
+        flashAmount = 0f;
+        if (!Application.isPlaying)
+        {
+            currentChargeProgress = 0f;
+        }
+    }
+
+    public void SetRecovery()
+    {
+        SetIdle();
     }
 
     public void SetCharge(float progress)
     {
-        charging = true;
-        chargeProgress = Mathf.Clamp01(progress);
+        targetChargeProgress = Mathf.Clamp01(progress);
+        if (!Application.isPlaying)
+        {
+            currentChargeProgress = targetChargeProgress;
+        }
     }
 
     public void Flash(float intensity)
@@ -186,6 +199,7 @@ public sealed class SuperBallInternalVeins : MonoBehaviour
         EnsureBlock();
         RefreshEffectiveRadiusReadout();
         RebuildLineCache();
+        currentChargeProgress = targetChargeProgress;
 
         if (lines.Count == 0 && transform.childCount == 0)
         {
@@ -218,6 +232,10 @@ public sealed class SuperBallInternalVeins : MonoBehaviour
         }
 
         float deltaTime = Application.isPlaying ? Time.deltaTime : 1f / 30f;
+        currentChargeProgress = Mathf.MoveTowards(
+            currentChargeProgress,
+            targetChargeProgress,
+            deltaTime * Mathf.Max(StateTransitionSpeed, 0.01f));
         flashAmount = Mathf.MoveTowards(flashAmount, 0f, deltaTime * FlashDecaySpeed);
         ApplyPulse();
     }
@@ -251,6 +269,7 @@ public sealed class SuperBallInternalVeins : MonoBehaviour
         IdlePulseSpeed = Mathf.Max(0.01f, IdlePulseSpeed);
         ChargePulseSpeed = Mathf.Max(IdlePulseSpeed, ChargePulseSpeed);
         FlashDecaySpeed = Mathf.Max(0.01f, FlashDecaySpeed);
+        StateTransitionSpeed = Mathf.Max(0.01f, StateTransitionSpeed);
         FlowSpeed = Mathf.Clamp(FlowSpeed, -8f, 8f);
         NoiseStrength = Mathf.Clamp01(NoiseStrength);
         FlickerAmount = Mathf.Clamp01(FlickerAmount);
@@ -374,6 +393,11 @@ public sealed class SuperBallInternalVeins : MonoBehaviour
         float sectorWidth = (Mathf.PI * 2f) / angularSectors;
         float angle = (sector + RandomRange(random, 0.12f, 0.88f)) * sectorWidth + azimuthOffset * Mathf.Deg2Rad;
         Vector2 disk = new Vector2(Mathf.Cos(angle) * diskRadius, Mathf.Sin(angle) * diskRadius);
+        if (frontHemisphere)
+        {
+            disk = ApplyFaceSupportBias(disk, index, count, coverageRadius, random);
+        }
+
         disk = Vector2.ClampMagnitude(disk, coverageRadius);
 
         float safeRadius = Mathf.Max(0.01f, shellRadius);
@@ -382,12 +406,35 @@ public sealed class SuperBallInternalVeins : MonoBehaviour
         return new Vector3(disk.x, disk.y, z).normalized;
     }
 
-    private Vector3[] BuildCurvedShellPath(
+    private static Vector2 ApplyFaceSupportBias(Vector2 disk, int index, int count, float radius, System.Random random)
+    {
+        float supportShare = Mathf.Clamp01(0.58f - index / Mathf.Max(1f, count) * 0.14f);
+        if (Next01(random) > supportShare)
+        {
+            return disk;
+        }
+
+        Vector2[] anchors =
+        {
+            new Vector2(-0.34f, 0.34f),
+            new Vector2(0.34f, 0.34f),
+            new Vector2(-0.48f, 0.03f),
+            new Vector2(0.48f, 0.03f),
+            new Vector2(-0.24f, -0.32f),
+            new Vector2(0.24f, -0.32f),
+        };
+
+        Vector2 anchor = anchors[index % anchors.Length] * radius;
+        anchor += RandomInsideUnitCircle(random) * radius * 0.09f;
+        return Vector2.Lerp(disk, anchor, RandomRange(random, 0.42f, 0.72f));
+    }
+
+    private Vector3[] BuildAngularLightningPath(
         Vector3 centerNormal,
         float radius,
         float arcLength,
         int pointCount,
-        float noise,
+        float angularJitter,
         System.Random random)
     {
         Vector3 tangent;
@@ -402,9 +449,8 @@ public sealed class SuperBallInternalVeins : MonoBehaviour
             axis = bitangent;
         }
 
-        float arcAngle = Mathf.Clamp(arcLength / Mathf.Max(0.01f, radius), 0.03f, Mathf.PI * 0.72f);
-        float curlPhase = RandomRange(random, 0f, Mathf.PI * 2f);
-        float curlBias = RandomRange(random, -0.45f, 0.45f);
+        float arcAngle = Mathf.Clamp(arcLength / Mathf.Max(0.01f, radius), 0.035f, Mathf.PI * 0.42f);
+        float jitter = Mathf.Clamp(angularJitter, 0f, 0.20f);
         Vector3[] points = new Vector3[pointCount];
 
         for (int i = 0; i < pointCount; i++)
@@ -414,26 +460,28 @@ public sealed class SuperBallInternalVeins : MonoBehaviour
             float angularOffset = centered * arcAngle;
             Vector3 normal = (Quaternion.AngleAxis(angularOffset * Mathf.Rad2Deg, axis) * centerNormal).normalized;
 
-            Vector3 localTangent;
-            Vector3 localBitangent;
-            BuildTangentBasis(normal, out localTangent, out localBitangent);
-            float envelope = Mathf.Sin(t * Mathf.PI);
-            float curl = Mathf.Sin(t * Mathf.PI * 2f + curlPhase) * noise;
-            curl += Mathf.Sin(t * Mathf.PI * 3f + curlPhase * 0.41f) * noise * 0.45f;
-            curl += centered * curlBias * noise;
-            normal = (normal + localBitangent * curl * envelope).normalized;
+            if (i > 0 && i < pointCount - 1)
+            {
+                Vector3 localTangent;
+                Vector3 localBitangent;
+                BuildTangentBasis(normal, out localTangent, out localBitangent);
+                float zigzag = (i % 2 == 0 ? -1f : 1f) * RandomRange(random, jitter * 0.45f, jitter);
+                float kink = RandomRange(random, -jitter * 0.35f, jitter * 0.35f);
+                normal = (normal + localBitangent * zigzag + localTangent * kink).normalized;
+            }
+
             points[i] = RegisterGeneratedPoint(normal * radius);
         }
 
         return points;
     }
 
-    private Vector3[] BuildBranchPath(
+    private Vector3[] BuildLightningBranchPath(
         Vector3 startNormal,
         float radius,
         float arcLength,
         int pointCount,
-        float noise,
+        float angularJitter,
         System.Random random)
     {
         Vector3 tangent;
@@ -448,8 +496,8 @@ public sealed class SuperBallInternalVeins : MonoBehaviour
             axis = bitangent;
         }
 
-        float arcAngle = Mathf.Clamp(arcLength / Mathf.Max(0.01f, radius), 0.02f, Mathf.PI * 0.48f);
-        float curlPhase = RandomRange(random, 0f, Mathf.PI * 2f);
+        float arcAngle = Mathf.Clamp(arcLength / Mathf.Max(0.01f, radius), 0.02f, Mathf.PI * 0.28f);
+        float jitter = Mathf.Clamp(angularJitter, 0f, 0.16f);
         Vector3[] points = new Vector3[pointCount];
 
         for (int i = 0; i < pointCount; i++)
@@ -457,12 +505,16 @@ public sealed class SuperBallInternalVeins : MonoBehaviour
             float t = pointCount <= 1 ? 0f : i / (float)(pointCount - 1);
             float angularOffset = t * arcAngle;
             Vector3 normal = (Quaternion.AngleAxis(angularOffset * Mathf.Rad2Deg, axis) * startNormal).normalized;
-            Vector3 localTangent;
-            Vector3 localBitangent;
-            BuildTangentBasis(normal, out localTangent, out localBitangent);
-            float envelope = Mathf.Sin(t * Mathf.PI);
-            float curl = Mathf.Sin(t * Mathf.PI * 1.7f + curlPhase) * noise * envelope;
-            normal = (normal + localBitangent * curl).normalized;
+
+            if (i > 0 && i < pointCount - 1)
+            {
+                Vector3 localTangent;
+                Vector3 localBitangent;
+                BuildTangentBasis(normal, out localTangent, out localBitangent);
+                float zigzag = (i % 2 == 0 ? -1f : 1f) * RandomRange(random, jitter * 0.35f, jitter);
+                normal = (normal + localBitangent * zigzag + localTangent * RandomRange(random, -jitter * 0.25f, jitter * 0.25f)).normalized;
+            }
+
             points[i] = RegisterGeneratedPoint(normal * radius);
         }
 
@@ -492,8 +544,8 @@ public sealed class SuperBallInternalVeins : MonoBehaviour
         line.SetPositions(points);
         line.alignment = LineAlignment.View;
         line.textureMode = LineTextureMode.Stretch;
-        line.numCapVertices = 4;
-        line.numCornerVertices = 4;
+        line.numCapVertices = 0;
+        line.numCornerVertices = 0;
         line.shadowCastingMode = ShadowCastingMode.Off;
         line.receiveShadows = false;
         line.allowOcclusionWhenDynamic = false;
@@ -501,9 +553,9 @@ public sealed class SuperBallInternalVeins : MonoBehaviour
         line.widthCurve = CreateWidthCurve();
 
         Color start = color;
-        Color end = Color.Lerp(color, new Color(0.72f, 1f, 0.03f, 1f), 0.35f);
-        start.a = 1f;
-        end.a = 0.86f;
+        Color end = Color.Lerp(color, new Color(0.64f, 1f, 0.05f, 1f), 0.25f);
+        start.a = 0.72f;
+        end.a = 0.55f;
         line.startColor = start;
         line.endColor = end;
 
@@ -514,7 +566,7 @@ public sealed class SuperBallInternalVeins : MonoBehaviour
         block.SetFloat(EmissionIntensityId, EmissionIntensity * emission);
         block.SetFloat(VisibilityId, DebugVisiblePlacement ? 1f : IdleVisibility);
         block.SetFloat(PulseId, Hash01(lineName));
-        block.SetFloat(ScrollSpeedId, FlowSpeed * Mathf.Lerp(0.75f, 1.35f, Hash01(lineName + "_flow")));
+        block.SetFloat(ScrollSpeedId, FlowSpeed * Mathf.Lerp(0.85f, 1.15f, Hash01(lineName + "_flow")));
         block.SetFloat(NoiseStrengthId, NoiseStrength);
         block.SetFloat(FlickerAmountId, FlickerAmount);
         line.SetPropertyBlock(block);
@@ -532,21 +584,19 @@ public sealed class SuperBallInternalVeins : MonoBehaviour
         }
 
         float time = Application.isPlaying ? Time.time : (float)UnityEditorSafeTime();
-        float speed = charging ? ChargePulseSpeed : IdlePulseSpeed;
-        float slowPulse = 0.82f + Mathf.PerlinNoise(time * speed, 0.71f) * 0.24f;
-        float baseVisibility = charging
-            ? Mathf.Lerp(IdleVisibility, ChargeVisibility, chargeProgress)
-            : IdleVisibility;
+        float threat = Mathf.Clamp01(currentChargeProgress);
+        float feed = SmoothRange(0.22f, 0.88f, threat);
+        float speed = Mathf.Lerp(IdlePulseSpeed, ChargePulseSpeed, feed);
+        float slowPulse = 0.88f + Mathf.PerlinNoise(time * speed, 0.71f) * 0.12f;
+        float baseVisibility = Mathf.Lerp(IdleVisibility, ChargeVisibility, feed);
         float visibility = DebugVisiblePlacement ? 1f : baseVisibility * slowPulse;
-        float emissionScale = charging
-            ? Mathf.Lerp(0.82f, 1.22f, chargeProgress)
-            : 1f;
+        float emissionScale = Mathf.Lerp(0.72f, 1.20f, feed);
 
         if (flashAmount > 0f)
         {
             float flash = Mathf.Clamp01(flashAmount);
             visibility = Mathf.Max(visibility, LaunchFlashVisibility * flash);
-            emissionScale = Mathf.Max(emissionScale, Mathf.Lerp(1.15f, 1.85f, flash));
+            emissionScale = Mathf.Max(emissionScale, Mathf.Lerp(1.00f, 1.55f, flash));
         }
 
         for (int i = 0; i < lines.Count; i++)
@@ -559,13 +609,13 @@ public sealed class SuperBallInternalVeins : MonoBehaviour
 
             float lineSeed = Hash01(line.name);
             float linePulse = Mathf.Repeat(time * (0.08f + lineSeed * 0.10f) + lineSeed, 1f);
-            float lineFlicker = 0.90f + Mathf.Sin(time * speed * (0.55f + lineSeed * 0.35f) + lineSeed * 6.28318f) * 0.10f;
+            float lineFlicker = 0.94f + Mathf.Sin(time * speed * (0.35f + lineSeed * 0.20f) + lineSeed * 6.28318f) * 0.06f;
             line.GetPropertyBlock(block);
             block.SetFloat(VisibilityId, visibility * lineFlicker);
             block.SetFloat(EmissionIntensityId, EmissionIntensity * Mathf.Lerp(VeinEmissionMin, VeinEmissionMax, lineSeed) * emissionScale);
             block.SetFloat(PulseId, linePulse);
             block.SetFloat(AlphaId, Mathf.Lerp(VeinAlphaMin, VeinAlphaMax, lineSeed));
-            block.SetFloat(ScrollSpeedId, FlowSpeed * Mathf.Lerp(0.75f, 1.35f, Hash01(line.name + "_flow")));
+            block.SetFloat(ScrollSpeedId, FlowSpeed * Mathf.Lerp(0.85f, 1.15f, Hash01(line.name + "_flow")));
             block.SetFloat(NoiseStrengthId, NoiseStrength);
             block.SetFloat(FlickerAmountId, FlickerAmount);
             line.SetPropertyBlock(block);
@@ -782,37 +832,38 @@ public sealed class SuperBallInternalVeins : MonoBehaviour
         Material material = EnsureMaterialAsset(materialPath);
         Renderer renderer = innerCore.GetComponent<Renderer>();
 
-        veins.VeinCount = 24;
-        veins.PointsPerVein = 10;
+        veins.VeinCount = 32;
+        veins.PointsPerVein = 5;
         veins.UseManualShellRadius = true;
         veins.ManualShellRadius = 0.98f;
         veins.AutoDeriveSphereRadius = true;
         veins.SphereRadius = 0.98f;
         veins.SurfaceInset = 0.015f;
-        veins.FrontHemisphereShare = 0.72f;
+        veins.FrontHemisphereShare = 0.84f;
         veins.MinArcLength = 0.16f;
         veins.MaxArcLength = 0.38f;
-        veins.CurveNoise = 0.07f;
-        veins.BranchChance = 0.12f;
-        veins.BranchLengthMultiplier = 0.30f;
-        veins.IdleVisibility = 0.34f;
-        veins.ChargeVisibility = 1.15f;
-        veins.LaunchFlashVisibility = 1.50f;
-        veins.VeinAlphaMin = 0.10f;
-        veins.VeinAlphaMax = 0.32f;
-        veins.VeinEmissionMin = 0.85f;
-        veins.VeinEmissionMax = 2.00f;
-        veins.EmissionIntensity = 1.12f;
-        veins.MinThickness = 0.0020f;
-        veins.MaxThickness = 0.028f;
+        veins.CurveNoise = 0.065f;
+        veins.BranchChance = 0.14f;
+        veins.BranchLengthMultiplier = 0.34f;
+        veins.IdleVisibility = 0.08f;
+        veins.ChargeVisibility = 0.82f;
+        veins.LaunchFlashVisibility = 1.18f;
+        veins.VeinAlphaMin = 0.045f;
+        veins.VeinAlphaMax = 0.18f;
+        veins.VeinEmissionMin = 0.42f;
+        veins.VeinEmissionMax = 1.30f;
+        veins.EmissionIntensity = 0.92f;
+        veins.MinThickness = 0.0012f;
+        veins.MaxThickness = 0.0048f;
         veins.RandomSeed = 84017;
-        veins.VeinColor = new Color(0.52f, 1f, 0.05f, 1f);
-        veins.IdlePulseSpeed = 0.55f;
-        veins.ChargePulseSpeed = 3.60f;
-        veins.FlashDecaySpeed = 4.40f;
-        veins.FlowSpeed = 0.52f;
-        veins.NoiseStrength = 0.15f;
-        veins.FlickerAmount = 0.08f;
+        veins.VeinColor = new Color(0.48f, 1f, 0.06f, 1f);
+        veins.IdlePulseSpeed = 0.28f;
+        veins.ChargePulseSpeed = 2.40f;
+        veins.FlashDecaySpeed = 5.20f;
+        veins.StateTransitionSpeed = 4.8f;
+        veins.FlowSpeed = 0.18f;
+        veins.NoiseStrength = 0.03f;
+        veins.FlickerAmount = 0.06f;
         veins.DebugVisiblePlacement = false;
         veins.DrawDebugGizmos = false;
         veins.LogGenerationSummary = true;
@@ -869,14 +920,14 @@ public sealed class SuperBallInternalVeins : MonoBehaviour
             return;
         }
 
-        SetColorIfPresent(material, ColorId, new Color(0.52f, 1f, 0.05f, 1f));
-        SetFloatIfPresent(material, VisibilityId, 0.34f);
-        SetFloatIfPresent(material, EmissionIntensityId, 1.12f);
+        SetColorIfPresent(material, ColorId, new Color(0.48f, 1f, 0.06f, 1f));
+        SetFloatIfPresent(material, VisibilityId, 0.08f);
+        SetFloatIfPresent(material, EmissionIntensityId, 0.92f);
         SetFloatIfPresent(material, PulseId, 0f);
         SetFloatIfPresent(material, AlphaId, 1f);
-        SetFloatIfPresent(material, ScrollSpeedId, 0.52f);
-        SetFloatIfPresent(material, NoiseStrengthId, 0.15f);
-        SetFloatIfPresent(material, FlickerAmountId, 0.08f);
+        SetFloatIfPresent(material, ScrollSpeedId, 0.18f);
+        SetFloatIfPresent(material, NoiseStrengthId, 0.03f);
+        SetFloatIfPresent(material, FlickerAmountId, 0.06f);
     }
 
     private static void SetColorIfPresent(Material material, int id, Color value)
@@ -900,9 +951,9 @@ public sealed class SuperBallInternalVeins : MonoBehaviour
     {
         return new AnimationCurve(
             new Keyframe(0f, 0f),
-            new Keyframe(0.08f, 0.82f),
+            new Keyframe(0.10f, 0.70f),
             new Keyframe(0.50f, 1f),
-            new Keyframe(0.92f, 0.72f),
+            new Keyframe(0.90f, 0.65f),
             new Keyframe(1f, 0f));
     }
 
@@ -988,14 +1039,14 @@ public sealed class SuperBallInternalVeins : MonoBehaviour
 
     private Color RandomVeinColor(System.Random random)
     {
-        Color toxicGreen = new Color(0.20f, 0.95f, 0.04f, 1f);
-        Color yellowGreen = new Color(0.72f, 1.00f, 0.04f, 1f);
-        Color deepGreen = new Color(0.06f, 0.72f, 0.06f, 1f);
+        Color toxicGreen = new Color(0.20f, 0.88f, 0.05f, 1f);
+        Color yellowGreen = new Color(0.56f, 1.00f, 0.05f, 1f);
+        Color deepGreen = new Color(0.04f, 0.55f, 0.04f, 1f);
         float roll = Next01(random);
 
         if (roll < 0.58f)
         {
-            return Color.Lerp(toxicGreen, yellowGreen, RandomRange(random, 0.05f, 0.50f));
+            return Color.Lerp(toxicGreen, yellowGreen, RandomRange(random, 0.05f, 0.35f));
         }
 
         if (roll < 0.86f)
@@ -1003,7 +1054,7 @@ public sealed class SuperBallInternalVeins : MonoBehaviour
             return Color.Lerp(deepGreen, toxicGreen, RandomRange(random, 0.35f, 0.95f));
         }
 
-        return Color.Lerp(toxicGreen, yellowGreen, RandomRange(random, 0.55f, 0.85f));
+        return Color.Lerp(toxicGreen, yellowGreen, RandomRange(random, 0.35f, 0.55f));
     }
 
     private static void Shuffle<T>(IList<T> items, System.Random random)
@@ -1025,6 +1076,26 @@ public sealed class SuperBallInternalVeins : MonoBehaviour
     private static float RandomRange(System.Random random, float min, float max)
     {
         return Mathf.Lerp(min, max, Next01(random));
+    }
+
+    private static float SmoothRange(float start, float end, float value)
+    {
+        if (Mathf.Approximately(start, end))
+        {
+            return value >= end ? 1f : 0f;
+        }
+
+        float min = Mathf.Min(start, end);
+        float max = Mathf.Max(start, end);
+        float t = Mathf.InverseLerp(min, max, Mathf.Clamp01(value));
+        return t * t * (3f - 2f * t);
+    }
+
+    private static Vector2 RandomInsideUnitCircle(System.Random random)
+    {
+        float angle = RandomRange(random, 0f, Mathf.PI * 2f);
+        float radius = Mathf.Sqrt(Next01(random));
+        return new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * radius;
     }
 
     private static float Hash01(string text)

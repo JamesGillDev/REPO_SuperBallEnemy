@@ -4,6 +4,12 @@ Experimental BepInEx/REPOLib mod for R.E.P.O. that adds a test-spawnable neon gr
 
 > Status: Prototype / v0.3.1 plus Unity-authored internal VFX iteration
 
+## Super Ball From Hell
+
+> One Man, One Orb, Thirty-Seven Shader Passes, and a Dream.
+
+A custom R.E.P.O. enemy mod featuring a translucent neon-green super ball with internal cracks, energy veins, sinister face projection, glowing aura, charge-up behavior, and violent ricochet attacks.
+
 ![Super Ball Anomaly concept sheet](Docs/Images/SuperBallAnomaly.png)
 
 ## Features
@@ -12,7 +18,7 @@ Experimental BepInEx/REPOLib mod for R.E.P.O. that adds a test-spawnable neon gr
 - Runtime-created wet, shiny emerald-black pearl shell instead of a ghost orb.
 - Concept-style charge-only internal demonic face with acid yellow-green eyes, a wide grin, teeth, internal crack veins, dark core, chrome-like highlight decals, and fake reflective rim/highlight layers.
 - Unity-authored internal cracks now use wider procedural yellow-green coverage across the visible inner shell instead of small hand-placed cube cracks.
-- Unity-authored internal energy veins add 24 clean, balanced LineRenderer paths inside the InnerCore shell, with subtle idle visibility, stronger charge visibility, and an intense launch flash.
+- Unity-authored internal energy veins add 32 angular, state-synced LineRenderer paths inside the InnerCore shell, with subtle idle visibility, stronger charge visibility, and an intense launch flash.
 - `SuperBallInternalVeins` keeps `ManualShellRadius` active at `0.98`, generates at an effective radius of `0.965`, and validates that the widest generated line stays under the shell surface.
 - Energy vein material/shader source is included in the Unity project as `M_SuperBall_EnergyVeins.mat` and `Shaders/SuperBallEnergyVein.shader`.
 - Default sphere diameter of `0.55m`.

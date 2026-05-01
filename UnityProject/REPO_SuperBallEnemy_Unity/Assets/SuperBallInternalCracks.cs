@@ -14,9 +14,9 @@ public sealed class SuperBallInternalCracks : MonoBehaviour
 {
     [Header("Distribution")]
     public SuperBallCrackDistributionMode DistributionMode = SuperBallCrackDistributionMode.FullSphereShell;
-    [Range(1, 64)] public int ClusterCount = 52;
+    [Range(1, 64)] public int ClusterCount = 56;
     [Range(1, 10)] public int SegmentsPerCluster = 4;
-    [Range(0f, 1f)] public float FrontHemisphereClusterShare = 0.70f;
+    [Range(0f, 1f)] public float FrontHemisphereClusterShare = 0.86f;
     public bool UseManualShellRadius = true;
     [Range(0.01f, 1.25f)] public float ManualShellRadius = 0.98f;
     public bool AutoDeriveSphereRadius = true;
@@ -50,23 +50,24 @@ public sealed class SuperBallInternalCracks : MonoBehaviour
     [Range(0.2f, 1.15f)] public float VerticalSpread = 1.00f;
     [Range(0.2f, 1.15f)] public float HorizontalSpread = 1.00f;
     [Min(0.01f)] public float MinArcLength = 0.18f;
-    [Min(0.01f)] public float MaxArcLength = 0.44f;
-    [Range(0f, 1f)] public float BranchChance = 0.40f;
-    [Range(0.1f, 1.25f)] public float BranchLengthMultiplier = 0.45f;
+    [Min(0.01f)] public float MaxArcLength = 0.46f;
+    [Range(0f, 1f)] public float BranchChance = 0.48f;
+    [Range(0.1f, 1.25f)] public float BranchLengthMultiplier = 0.52f;
     public int RandomSeed = 93019;
 
     [Header("Rendering")]
-    [Range(0f, 1f)] public float CrackAlphaMin = 0.12f;
-    [Range(0f, 1f)] public float CrackAlphaMax = 0.34f;
-    [Min(0f)] public float CrackEmissionMin = 0.55f;
-    [Min(0f)] public float CrackEmissionMax = 1.45f;
-    [Range(0f, 2f)] public float IdleVisibility = 0.35f;
-    [Range(0f, 2f)] public float ChargeVisibility = 1.00f;
-    [Range(0f, 3f)] public float LaunchFlashVisibility = 1.35f;
-    public Color crackColor = new Color(0.24f, 1f, 0.10f, 1f);
-    [Min(0f)] public float emissionIntensity = 1.10f;
-    [Min(0.001f)] public float minThickness = 0.0022f;
-    [Min(0.001f)] public float maxThickness = 0.0065f;
+    [Range(0f, 1f)] public float CrackAlphaMin = 0.16f;
+    [Range(0f, 1f)] public float CrackAlphaMax = 0.44f;
+    [Min(0f)] public float CrackEmissionMin = 0.75f;
+    [Min(0f)] public float CrackEmissionMax = 2.10f;
+    [Range(0f, 2f)] public float IdleVisibility = 0.18f;
+    [Range(0f, 2f)] public float ChargeVisibility = 1.18f;
+    [Range(0f, 3f)] public float LaunchFlashVisibility = 1.75f;
+    public Color crackColor = new Color(0.48f, 1f, 0.06f, 1f);
+    [Min(0f)] public float emissionIntensity = 1.35f;
+    [Min(0.001f)] public float minThickness = 0.0024f;
+    [Min(0.001f)] public float maxThickness = 0.0095f;
+    [Min(0.01f)] public float StateTransitionSpeed = 4.8f;
 
     [Header("Debug Validation")]
     public bool DebugVisiblePlacement;
@@ -173,6 +174,38 @@ public sealed class SuperBallInternalCracks : MonoBehaviour
         ClampSettings();
     }
 
+    public void SetIdle()
+    {
+        SuperBallCrackPulse pulse = ResolvePulseForState();
+        if (pulse != null)
+        {
+            pulse.SetIdle();
+        }
+    }
+
+    public void SetRecovery()
+    {
+        SetIdle();
+    }
+
+    public void SetCharge(float progress)
+    {
+        SuperBallCrackPulse pulse = ResolvePulseForState();
+        if (pulse != null)
+        {
+            pulse.SetCharge(progress);
+        }
+    }
+
+    public void Flash(float intensity)
+    {
+        SuperBallCrackPulse pulse = ResolvePulseForState();
+        if (pulse != null)
+        {
+            pulse.Flash(intensity);
+        }
+    }
+
     private void Awake()
     {
         if (Application.isPlaying && transform.childCount == 0)
@@ -196,6 +229,12 @@ public sealed class SuperBallInternalCracks : MonoBehaviour
         ClampSettings();
         RefreshEffectiveRadiusReadout();
         ConfigurePulse(false);
+    }
+
+    private SuperBallCrackPulse ResolvePulseForState()
+    {
+        ConfigurePulse(true);
+        return GetComponent<SuperBallCrackPulse>();
     }
 
     private void ClampSettings()
@@ -247,6 +286,7 @@ public sealed class SuperBallInternalCracks : MonoBehaviour
         emissionIntensity = Mathf.Max(0f, emissionIntensity);
         minThickness = Mathf.Max(0.001f, minThickness);
         maxThickness = Mathf.Max(minThickness, maxThickness);
+        StateTransitionSpeed = Mathf.Max(0.01f, StateTransitionSpeed);
         DebugThicknessMultiplier = Mathf.Clamp(DebugThicknessMultiplier, 1f, 20f);
         DebugEmissionIntensity = Mathf.Max(1f, DebugEmissionIntensity);
     }
@@ -368,8 +408,8 @@ public sealed class SuperBallInternalCracks : MonoBehaviour
 
         line.alignment = LineAlignment.View;
         line.textureMode = LineTextureMode.Stretch;
-        line.numCornerVertices = 1;
-        line.numCapVertices = 1;
+        line.numCornerVertices = 0;
+        line.numCapVertices = 0;
         line.shadowCastingMode = ShadowCastingMode.Off;
         line.receiveShadows = false;
         line.lightProbeUsage = LightProbeUsage.Off;
@@ -459,9 +499,8 @@ public sealed class SuperBallInternalCracks : MonoBehaviour
     {
         tangent = tangent.sqrMagnitude < 0.0001f ? Vector2.right : tangent.normalized;
         Vector2 side = new Vector2(-tangent.y, tangent.x);
-        float wobble = RandomRange(random, 0.003f, 0.017f);
-        float drift = RandomRange(random, -0.010f, 0.010f);
-        float phase = RandomRange(random, 0f, Mathf.PI * 2f);
+        float kink = RandomRange(random, 0.006f, 0.020f);
+        float drift = RandomRange(random, -0.006f, 0.006f);
         Vector3[] points = new Vector3[pointCount];
 
         for (int i = 0; i < pointCount; i++)
@@ -469,11 +508,16 @@ public sealed class SuperBallInternalCracks : MonoBehaviour
             float t = pointCount == 1 ? 0f : i / (pointCount - 1f);
             float signedT = forwardOnly ? t : t - 0.5f;
             float fade = Mathf.Sin(t * Mathf.PI);
-            float crease = Mathf.Sin((t * Mathf.PI * 2f) + phase) * wobble * fade;
-            crease += RandomRange(random, -0.004f, 0.004f) * fade;
+            float zigzag = 0f;
+            if (i > 0 && i < pointCount - 1)
+            {
+                zigzag = (i % 2 == 0 ? -1f : 1f) * RandomRange(random, kink * 0.42f, kink);
+                zigzag += RandomRange(random, -0.003f, 0.003f);
+            }
 
-            Vector2 disk = start + tangent * (signedT * length) + side * (crease + drift * signedT);
-            float inwardJitter = RandomRange(random, 0f, DepthJitter * 0.25f) * fade;
+            float forwardKink = i > 0 && i < pointCount - 1 ? RandomRange(random, -0.010f, 0.010f) * fade : 0f;
+            Vector2 disk = start + tangent * (signedT * length + forwardKink) + side * (zigzag + drift * signedT);
+            float inwardJitter = RandomRange(random, 0f, DepthJitter * 0.18f) * fade;
             points[i] = TangentOffsetToShellPoint(cluster, disk, inwardJitter);
         }
 
@@ -645,12 +689,41 @@ public sealed class SuperBallInternalCracks : MonoBehaviour
             shellCoverageRadius,
             attempt);
         disk = Rotate2D(disk, azimuthOffset);
+        if (frontHemisphere)
+        {
+            disk = ApplyFaceSupportBias(disk, index, count, shellCoverageRadius, random);
+        }
+
         disk = ClampProjectedCircle(disk, shellCoverageRadius);
 
         float safeShellRadius = Mathf.Max(0.01f, shellRadius);
         float zMagnitude = Mathf.Sqrt(Mathf.Max(0.0001f, safeShellRadius * safeShellRadius - disk.sqrMagnitude));
         float z = frontHemisphere ? -zMagnitude : zMagnitude;
         return new Vector3(disk.x, disk.y, z).normalized;
+    }
+
+    private static Vector2 ApplyFaceSupportBias(Vector2 disk, int index, int count, float radius, System.Random random)
+    {
+        float supportShare = Mathf.Clamp01(0.62f - index / Mathf.Max(1f, count) * 0.18f);
+        if (Next01(random) > supportShare)
+        {
+            return disk;
+        }
+
+        Vector2[] anchors =
+        {
+            new Vector2(-0.36f, 0.34f),
+            new Vector2(0.36f, 0.34f),
+            new Vector2(-0.50f, 0.02f),
+            new Vector2(0.50f, 0.02f),
+            new Vector2(-0.28f, -0.34f),
+            new Vector2(0.28f, -0.34f),
+        };
+
+        Vector2 anchor = anchors[index % anchors.Length] * radius;
+        anchor += RandomInsideUnitCircle(random) * radius * 0.10f;
+        float blend = RandomRange(random, 0.36f, 0.68f);
+        return Vector2.Lerp(disk, anchor, blend);
     }
 
     private Vector3 GenerateViewFacingDiskNormal(int index, int count, System.Random random)
@@ -927,9 +1000,13 @@ public sealed class SuperBallInternalCracks : MonoBehaviour
         pulse.idleVisibility = IdleVisibility;
         pulse.chargeVisibility = ChargeVisibility;
         pulse.launchFlashVisibility = LaunchFlashVisibility;
-        pulse.idleEmission = Mathf.Max(0.04f, emissionIntensity * 0.62f);
-        pulse.chargeEmission = Mathf.Max(pulse.idleEmission, emissionIntensity * 1.35f);
-        pulse.flashEmission = Mathf.Max(pulse.chargeEmission, emissionIntensity * 2.10f);
+        pulse.idleEmission = Mathf.Max(0.04f, emissionIntensity * 0.58f);
+        pulse.chargeEmission = Mathf.Max(pulse.idleEmission, emissionIntensity * 1.55f);
+        pulse.flashEmission = Mathf.Max(pulse.chargeEmission, emissionIntensity * 2.55f);
+        pulse.idleFlickerSpeed = 0.75f;
+        pulse.chargeFlickerSpeed = 4.80f;
+        pulse.flashDecaySpeed = 5.5f;
+        pulse.stateTransitionSpeed = StateTransitionSpeed;
 
         if (DebugVisiblePlacement)
         {
@@ -1596,9 +1673,9 @@ public sealed class SuperBallInternalCracks : MonoBehaviour
         Material material = AssetDatabase.LoadAssetAtPath<Material>(crackMaterialPath);
 
         cracks.DistributionMode = SuperBallCrackDistributionMode.FullSphereShell;
-        cracks.ClusterCount = 52;
+        cracks.ClusterCount = 56;
         cracks.SegmentsPerCluster = 4;
-        cracks.FrontHemisphereClusterShare = 0.70f;
+        cracks.FrontHemisphereClusterShare = 0.86f;
         cracks.UseManualShellRadius = true;
         cracks.ManualShellRadius = 0.98f;
         cracks.AutoDeriveSphereRadius = true;
@@ -1621,21 +1698,22 @@ public sealed class SuperBallInternalCracks : MonoBehaviour
         cracks.VerticalSpread = 1.00f;
         cracks.HorizontalSpread = 1.00f;
         cracks.MinArcLength = 0.18f;
-        cracks.MaxArcLength = 0.44f;
-        cracks.BranchChance = 0.40f;
-        cracks.BranchLengthMultiplier = 0.45f;
+        cracks.MaxArcLength = 0.46f;
+        cracks.BranchChance = 0.48f;
+        cracks.BranchLengthMultiplier = 0.52f;
         cracks.RandomSeed = 93019;
-        cracks.CrackAlphaMin = 0.12f;
-        cracks.CrackAlphaMax = 0.34f;
-        cracks.CrackEmissionMin = 0.55f;
-        cracks.CrackEmissionMax = 1.45f;
-        cracks.IdleVisibility = 0.35f;
-        cracks.ChargeVisibility = 1.00f;
-        cracks.LaunchFlashVisibility = 1.35f;
-        cracks.crackColor = new Color(0.24f, 1f, 0.10f, 1f);
-        cracks.emissionIntensity = 1.10f;
-        cracks.minThickness = 0.0022f;
-        cracks.maxThickness = 0.0065f;
+        cracks.CrackAlphaMin = 0.16f;
+        cracks.CrackAlphaMax = 0.44f;
+        cracks.CrackEmissionMin = 0.75f;
+        cracks.CrackEmissionMax = 2.10f;
+        cracks.IdleVisibility = 0.18f;
+        cracks.ChargeVisibility = 1.18f;
+        cracks.LaunchFlashVisibility = 1.75f;
+        cracks.crackColor = new Color(0.48f, 1f, 0.06f, 1f);
+        cracks.emissionIntensity = 1.35f;
+        cracks.minThickness = 0.0024f;
+        cracks.maxThickness = 0.0095f;
+        cracks.StateTransitionSpeed = 4.8f;
         cracks.DebugVisiblePlacement = false;
         cracks.DebugPlacementColor = Color.cyan;
         cracks.DebugThicknessMultiplier = 8f;
@@ -1643,6 +1721,7 @@ public sealed class SuperBallInternalCracks : MonoBehaviour
         cracks.DrawDebugGizmos = false;
         cracks.DrawDebugHemisphereGuide = false;
         cracks.LogGenerationSummary = true;
+        ConfigureCrackMaterial(material);
         cracks.SetCrackMaterial(material);
         cracks.SetTargetRenderer(renderer);
         cracks.RegenerateCracks();
@@ -1670,7 +1749,7 @@ public sealed class SuperBallInternalCracks : MonoBehaviour
             changed = true;
         }
 
-        Color targetColor = new Color(0.24f, 1f, 0.10f, 1f);
+        Color targetColor = new Color(0.48f, 1f, 0.06f, 1f);
         if (material.HasProperty(ColorId))
         {
             Color currentColor = material.GetColor(ColorId);
@@ -1684,9 +1763,9 @@ public sealed class SuperBallInternalCracks : MonoBehaviour
         if (material.HasProperty(EmissionIntensityId))
         {
             float currentEmission = material.GetFloat(EmissionIntensityId);
-            if (!Mathf.Approximately(currentEmission, 1.10f))
+            if (!Mathf.Approximately(currentEmission, 1.35f))
             {
-                material.SetFloat(EmissionIntensityId, 1.10f);
+                material.SetFloat(EmissionIntensityId, 1.35f);
                 changed = true;
             }
         }
@@ -1694,9 +1773,9 @@ public sealed class SuperBallInternalCracks : MonoBehaviour
         if (material.HasProperty(VisibilityId))
         {
             float currentVisibility = material.GetFloat(VisibilityId);
-            if (!Mathf.Approximately(currentVisibility, 0.35f))
+            if (!Mathf.Approximately(currentVisibility, 0.18f))
             {
-                material.SetFloat(VisibilityId, 0.35f);
+                material.SetFloat(VisibilityId, 0.18f);
                 changed = true;
             }
         }
