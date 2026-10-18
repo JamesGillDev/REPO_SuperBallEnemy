@@ -13,11 +13,19 @@ Builds/
 .vscode/.ropeproject
 .vscode/settings.json
 
+# Unity generated IDE/project files
+UnityProject/REPO_SuperBallEnemy_Unity/*.csproj
+UnityProject/REPO_SuperBallEnemy_Unity/*.sln
+UnityProject/REPO_SuperBallEnemy_Unity/.vscode/
+
 # Compiled artifacts and logs
 *.dll
 *.pdb
 *.mdb
 *.log
+
+# Local capture videos are large and should not be pushed to GitHub
+Docs/Images/*.mp4
 
 # R.E.P.O. / Unity / BepInEx game install content
 BepInEx/
